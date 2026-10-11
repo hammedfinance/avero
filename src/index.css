@@ -1,0 +1,85 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ── Avero Design Tokens ── */
+:root {
+  --black: #050505;
+  --deep-black: #0A0A0A;
+  --surface: #111111;
+  --surface-2: #171717;
+  --surface-3: #1C1C1C;
+  --border: #242424;
+  --border-subtle: #1A1A1A;
+  --ash: #A3A3A3;
+  --silver: #D4D4D4;
+  --white: #FFFFFF;
+  --atmo-blue: #0B1220;
+  --teal: #092020;
+
+  /* Semantic */
+  --success: #1a8047;
+  --success-dim: #0f3d22;
+  --danger: #ba2b4c;
+  --danger-dim: #3d0f1a;
+  --accent: #FFFFFF;
+  --accent-muted: rgba(255,255,255,0.08);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: 'DM Sans', 'Manrope', sans-serif;
+  min-height: 100dvh;
+  background-color: var(--black);
+  color: var(--white);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+.display {
+  font-family: 'Manrope', 'DM Sans', sans-serif;
+  letter-spacing: -0.03em;
+}
+
+.mono {
+  font-family: 'JetBrains Mono', Menlo, monospace;
+}
+
+/* Tabular numbers for all financial data */
+.tabular {
+  font-variant-numeric: tabular-nums;
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 4px;
+  height: 4px;
+}
+::-webkit-scrollbar-track {
+  background: var(--surface);
+}
+::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 2px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #333;
+}
+
+/* Smooth focus ring */
+*:focus-visible {
+  outline: 2px solid rgba(255,255,255,0.3);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+/* Toast overrides for dark theme */
+[data-sonner-toaster] {
+  --normal-bg: #111111 !important;
+  --normal-border: #242424 !important;
+  --normal-text: #D4D4D4 !important;
+}
