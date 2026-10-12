@@ -91,7 +91,7 @@ export function PaymentLinksPage({ user }: PaymentLinksPageProps) {
     setCreating(true)
     setConfigBoundary(null)
     try {
-      const result = await paymentLinksApi.create(user.id, title.trim(), parseFloat(amount))
+      const result = await paymentLinksApi.create(user.id, user.email, title.trim(), parseFloat(amount))
       setLinks((prev) => [
         {
           id: result.id,

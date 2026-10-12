@@ -75,8 +75,8 @@ export const txStatusApi = {
 
 // ── Payment links ──
 export const paymentLinksApi = {
-  create: (userId: string, title: string, amount: number) =>
-    request<{ id: string; slug: string; url: string }>('POST', '/payments/create', { userId, title, amount }),
+  create: (userId: string, userEmail: string, title: string, amount: number) =>
+    request<{ id: string; slug: string; url: string }>('POST', '/payments/create', { userId, userEmail, title, amount }),
   list: (userId: string) =>
     request<{ links: Array<{ id: string; slug: string; title: string; amount: number; status: string; created_at: string }> }>('GET', '/payments/list', undefined, { userId }),
 }
@@ -85,6 +85,26 @@ export const paymentLinksApi = {
 export const transactionsApi = {
   list: (userId: string) =>
     request<{ transactions: Array<{ id: string; sender_email: string; recipient_email: string; amount: string; currency: string; message?: string; status: string; created_at: string }> }>('GET', '/transactions/list', undefined, { userId }),
+}
+
+// ── Payment Requests ──
+export const requestApi = {
+  create: (payload: {
+    requesterEmail: string
+    requesterId: string
+    recipientEmail?: string
+    amount: string
+    note?: string
+  }) =>
+    request<{ id: string; slug: string; url: string }>('POST', '/requests/create', payload),
+  list: (userId: string) =>
+    request<{
+      requests: Array<{
+        id: string; slug: string; requester_email: string
+        recipient_email: string | null; amount: string
+        note: string | null; status: string; created_at: string
+      }>
+    }>('GET', '/requests/list', undefined, { userId }),
 }
 
 // ── User ──

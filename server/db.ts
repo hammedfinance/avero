@@ -118,16 +118,28 @@ export async function upsertUser(params: {
   walletAddress?: string
 }) {
   const db = getSupabase()
-  const { error } = await db.from('users').upsert(
-    {
-      id: params.id,
-      email: params.email,
-      name: params.name ?? null,
-      wallet_id: params.walletId ?? null,
-      wallet_address: params.walletAddress ?? null,
-    },
-    { onConflict: 'id' }
-  )
+  // Check if user exists by email first (Dynamic IDs differ from Supabase UUIDs)
+  const existing = await getUserByEmail(params.email)
+  if (existing) {
+    // Update the existing record — preserve the original id
+    const updates: Record<string, string | null> = {}
+    if (params.name) updates.name = params.name
+    if (params.walletId) updates.wallet_id = params.walletId
+    if (params.walletAddress) updates.wallet_address = params.walletAddress
+    if (Object.keys(updates).length > 0) {
+      const { error } = await db.from('users').update(updates).eq('email', params.email)
+      if (error) throw error
+    }
+    return
+  }
+  // Insert new user
+  const { error } = await db.from('users').insert({
+    id: params.id,
+    email: params.email,
+    name: params.name ?? null,
+    wallet_id: params.walletId ?? null,
+    wallet_address: params.walletAddress ?? null,
+  })
   if (error) throw error
 }
 

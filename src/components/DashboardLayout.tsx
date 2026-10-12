@@ -2,6 +2,7 @@ import { ReactNode, useState } from 'react'
 import {
   LayoutDashboard,
   ArrowUpRight,
+  ArrowDownLeft,
   Link2,
   Clock,
   Wallet,
@@ -9,11 +10,12 @@ import {
   X,
   LogOut,
   ChevronRight,
+  Send,
 } from 'lucide-react'
 import { AverLogo, AverWordmark } from './ui/AverLogo'
 import { clearSession, AverUser } from '../lib/auth'
 
-export type DashView = 'overview' | 'send' | 'links' | 'transactions' | 'wallet'
+export type DashView = 'overview' | 'send' | 'request' | 'bulk' | 'links' | 'transactions' | 'wallet'
 
 interface DashboardLayoutProps {
   user: AverUser
@@ -26,6 +28,8 @@ interface DashboardLayoutProps {
 const navItems: { id: DashView; label: string; icon: React.ElementType }[] = [
   { id: 'overview', label: 'Overview', icon: LayoutDashboard },
   { id: 'send', label: 'Send money', icon: ArrowUpRight },
+  { id: 'request', label: 'Request money', icon: ArrowDownLeft },
+  { id: 'bulk', label: 'Bulk send', icon: Send },
   { id: 'links', label: 'Payment links', icon: Link2 },
   { id: 'transactions', label: 'Transactions', icon: Clock },
   { id: 'wallet', label: 'Wallet', icon: Wallet },

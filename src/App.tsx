@@ -5,6 +5,8 @@ import { AuthPage } from './components/AuthPage'
 import { DashboardLayout, DashView } from './components/DashboardLayout'
 import { OverviewPage } from './components/OverviewPage'
 import { SendMoneyPage } from './components/SendMoneyPage'
+import { RequestMoneyPage } from './components/RequestMoneyPage'
+import { BulkSendPage } from './components/BulkSendPage'
 import { PaymentLinksPage } from './components/PaymentLinksPage'
 import { TransactionsPage } from './components/TransactionsPage'
 import { WalletPage } from './components/WalletPage'
@@ -132,6 +134,8 @@ export default function App() {
       >
         {dashView === 'overview'     && <OverviewPage user={user} onNavigate={setDashView} />}
         {dashView === 'send'         && <SendMoneyPage user={user} />}
+        {dashView === 'request'      && <RequestMoneyPage user={user} />}
+        {dashView === 'bulk'         && <BulkSendPage user={user} />}
         {dashView === 'links'        && <PaymentLinksPage user={user} />}
         {dashView === 'transactions' && <TransactionsPage user={user} />}
         {dashView === 'wallet'       && <WalletPage user={user} />}

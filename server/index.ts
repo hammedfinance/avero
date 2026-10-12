@@ -24,6 +24,8 @@ import {
 import {
   isEmailConfigured,
   sendPaymentNotification,
+  sendPaymentReceipt,
+  sendRequestNotification,
 } from './email'
 
 const app = express()
@@ -68,11 +70,13 @@ app.post('/auth/upsert', async (req, res) => {
   }
 
   try {
-    // 1. Upsert user record
+    // 1. Upsert user record (handles existing email gracefully)
     await upsertUser({ id, email, name })
 
-    // 2. Fetch full user to check if they already have a wallet
-    const user = await getUserById(id)
+    // 2. Fetch full user — look up by email since the Supabase ID may differ
+    //    from the Dynamic user ID when the user was first created before Dynamic
+    let user = await getUserByEmail(email)
+    if (!user) user = await getUserById(id)
 
     // 3. Create a Circle wallet if none exists yet
     if (!user?.wallet_id && isCircleConfigured()) {
@@ -240,8 +244,9 @@ app.post('/wallet/send', async (req, res) => {
     // 5. Update transaction record with Circle ID
     await updateTransaction(tx.id, { circleTransactionId, status })
 
-    // 6. Fire email notification (non-blocking)
+    // 6. Fire email notifications (non-blocking)
     if (isEmailConfigured()) {
+      // Notify recipient
       sendPaymentNotification({
         recipientEmail,
         senderEmail,
@@ -250,7 +255,18 @@ app.post('/wallet/send', async (req, res) => {
         txId: tx.id,
         explorerUrl: null,
       }).catch((err: unknown) => {
-        console.error('[/wallet/send] email notification failed:', err)
+        console.error('[/wallet/send] recipient email failed:', err)
+      })
+      // Send receipt to sender
+      sendPaymentReceipt({
+        senderEmail,
+        recipientEmail,
+        amount: amountStr,
+        message: message ?? undefined,
+        txId: tx.id,
+        explorerUrl: null,
+      }).catch((err: unknown) => {
+        console.error('[/wallet/send] sender receipt failed:', err)
       })
     }
 
@@ -318,16 +334,22 @@ app.get('/wallet/status/:circleTransactionId', async (req, res) => {
 // ── Payment links: create ─────────────────────────────────────
 
 app.post('/payments/create', async (req, res) => {
-  const { userId, title, amount } = req.body as { userId?: string; title?: string; amount?: number }
-  if (!userId || !title || !amount) {
-    return res.status(400).json({ error: 'userId, title, and amount are required.' })
+  const { userId, userEmail, title, amount } = req.body as { userId?: string; userEmail?: string; title?: string; amount?: number }
+  if (!title || !amount || (!userId && !userEmail)) {
+    return res.status(400).json({ error: 'title, amount, and userId or userEmail are required.' })
   }
   if (!isSupabaseConfigured()) {
     return missingEnv(res, 'Supabase', ['VITE_SUPABASE_URL', 'VITE_SUPABASE_ANON_KEY'])
   }
 
   try {
-    const link = await createPaymentLink({ userId, title, amount })
+    // Resolve the correct Supabase UUID — look up by email if provided
+    let resolvedUserId = userId ?? ''
+    if (userEmail) {
+      const user = await getUserByEmail(userEmail)
+      if (user) resolvedUserId = user.id
+    }
+    const link = await createPaymentLink({ userId: resolvedUserId, title, amount })
     const baseUrl = process.env.VITE_APP_URL ?? 'https://avero.app'
     return res.json({
       id: link.id,
@@ -397,6 +419,90 @@ app.get('/user/lookup', async (req, res) => {
   } catch (err) {
     console.error('[/user/lookup] error:', err)
     return res.status(500).json({ error: 'Failed to look up user.' })
+  }
+})
+
+// ── Payment requests: create ──────────────────────────────────
+
+app.post('/requests/create', async (req, res) => {
+  const { requesterEmail, requesterId, recipientEmail, amount, note } = req.body as {
+    requesterEmail?: string
+    requesterId?: string
+    recipientEmail?: string
+    amount?: string
+    note?: string
+  }
+
+  if (!requesterEmail || !requesterId || !amount) {
+    return res.status(400).json({ error: 'requesterEmail, requesterId, and amount are required.' })
+  }
+
+  if (!isSupabaseConfigured()) {
+    return missingEnv(res, 'Supabase', ['VITE_SUPABASE_URL', 'VITE_SUPABASE_ANON_KEY'])
+  }
+
+  try {
+    const supabase = getSupabase()
+    const id = crypto.randomUUID()
+    const slug = crypto.randomUUID().replace(/-/g, '').slice(0, 10)
+    const appUrl = process.env.VITE_APP_URL ?? 'https://useavero.xyz'
+    const url = `${appUrl}/request/${slug}`
+
+    await supabase.from('payment_requests').insert({
+      id,
+      requester_id: requesterId,
+      requester_email: requesterEmail,
+      recipient_email: recipientEmail ?? null,
+      amount,
+      note: note ?? null,
+      slug,
+      status: 'pending',
+    })
+
+    // Send email if recipient provided
+    if (recipientEmail && isEmailConfigured()) {
+      sendRequestNotification({
+        requesterEmail,
+        recipientEmail,
+        amount,
+        note,
+        requestUrl: url,
+      }).catch((err: unknown) => {
+        console.error('[/requests/create] email failed:', err)
+      })
+    }
+
+    return res.json({ id, slug, url })
+  } catch (err) {
+    console.error('[/requests/create] error:', err)
+    return res.status(500).json({ error: 'Failed to create payment request.' })
+  }
+})
+
+// ── Payment requests: list ────────────────────────────────────
+
+app.get('/requests/list', async (req, res) => {
+  const { userId } = req.query as { userId?: string }
+  if (!userId) return res.status(400).json({ error: 'userId is required.' })
+
+  if (!isSupabaseConfigured()) {
+    return missingEnv(res, 'Supabase', ['VITE_SUPABASE_URL', 'VITE_SUPABASE_ANON_KEY'])
+  }
+
+  try {
+    const supabase = getSupabase()
+    const { data, error } = await supabase
+      .from('payment_requests')
+      .select('*')
+      .eq('requester_id', userId)
+      .order('created_at', { ascending: false })
+      .limit(50)
+
+    if (error) throw error
+    return res.json({ requests: data ?? [] })
+  } catch (err) {
+    console.error('[/requests/list] error:', err)
+    return res.status(500).json({ error: 'Failed to list requests.' })
   }
 })
 
