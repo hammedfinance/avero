@@ -7,7 +7,7 @@
 # to point to your deployed backend once it is live.
 [[redirects]]
   from = "/api/*"
-  to = "https://avero-api.up.railway.app/:splat"
+  to = "https://avero-production-a424.up.railway.app/:splat"
   status = 200
   force = true
 
