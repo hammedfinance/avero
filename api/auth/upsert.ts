@@ -1,6 +1,6 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node'
-import { isSupabaseConfigured, getUserByEmail, upsertUser, updateUserWallet } from '../_db'
-import { isCircleConfigured, createUserWallet } from '../_circle'
+import { isSupabaseConfigured, getUserByEmail, upsertUser, updateUserWallet } from '../_db.js'
+import { isCircleConfigured, createUserWallet } from '../_circle.js'
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' })
