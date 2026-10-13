@@ -73,29 +73,28 @@ app.post('/auth/upsert', async (req, res) => {
     // 1. Upsert user record (handles existing email gracefully)
     await upsertUser({ id, email, name })
 
-    // 2. Fetch full user — look up by email since the Supabase ID may differ
-    //    from the Dynamic user ID when the user was first created before Dynamic
-    let user = await getUserByEmail(email)
-    if (!user) user = await getUserById(id)
+    // 2. ALWAYS look up by email — this is the canonical key
+    //    The Dynamic ID and Supabase ID may differ; email is the truth
+    const user = await getUserByEmail(email)
+    if (!user) {
+      return res.status(500).json({ error: 'Failed to find user after upsert.' })
+    }
 
-    // 3. Create a Circle wallet if none exists yet
-    if (!user?.wallet_id && isCircleConfigured()) {
+    // 3. Create a Circle wallet if none exists yet — use the Supabase user.id
+    if (!user.wallet_id && isCircleConfigured()) {
       try {
-        const { walletId, address } = await createUserWallet(id)
-        await updateUserWallet(id, walletId, address)
-        const updated = await getUserById(id)
-        return res.json({
-          user: updated,
-          walletProvisioned: true,
-        })
+        const { walletId, address } = await createUserWallet(user.id)
+        // Update using the SUPABASE user.id not the Dynamic id
+        await updateUserWallet(user.id, walletId, address)
+        const updated = await getUserByEmail(email)
+        return res.json({ user: updated, walletProvisioned: true })
       } catch (walletErr) {
         console.error('[/auth/upsert] wallet creation failed:', walletErr)
-        // Non-fatal — user is saved, wallet will be retried later
         return res.json({ user, walletProvisioned: false, walletError: String(walletErr) })
       }
     }
 
-    return res.json({ user, walletProvisioned: false })
+    return res.json({ user, walletProvisioned: !!user.wallet_id })
   } catch (err) {
     console.error('[/auth/upsert] error:', err)
     return res.status(500).json({ error: 'Failed to upsert user.' })
@@ -120,17 +119,31 @@ app.post('/auth/login', (_req, res) => {
 
 app.post('/wallet/create', async (req, res) => {
   const { userId, email } = req.body as { userId?: string; email?: string }
-  if (!userId) return res.status(400).json({ error: 'userId is required.' })
+  if (!email && !userId) return res.status(400).json({ error: 'email or userId is required.' })
 
   if (!isCircleConfigured()) {
     return missingEnv(res, 'Circle', ['CIRCLE_API_KEY', 'CIRCLE_ENTITY_SECRET', 'CIRCLE_WALLET_SET_ID'])
   }
 
   try {
-    const { walletId, address } = await createUserWallet(userId)
+    // Resolve the real Supabase user by email first
+    let supabaseUserId = userId ?? ''
+    if (email && isSupabaseConfigured()) {
+      const user = await getUserByEmail(email)
+      if (user) {
+        // Already has a wallet — return it directly
+        if (user.wallet_id) {
+          return res.json({ walletId: user.wallet_id, address: user.wallet_address, existing: true })
+        }
+        supabaseUserId = user.id
+      }
+    }
 
-    if (isSupabaseConfigured()) {
-      await upsertUser({ id: userId, email: email ?? '', walletId, walletAddress: address })
+    const { walletId, address } = await createUserWallet(supabaseUserId)
+
+    if (isSupabaseConfigured() && email) {
+      const user = await getUserByEmail(email)
+      if (user) await updateUserWallet(user.id, walletId, address)
     }
 
     return res.json({ walletId, address })
@@ -143,7 +156,13 @@ app.post('/wallet/create', async (req, res) => {
 // ── Wallet: balance ───────────────────────────────────────────
 
 app.post('/wallet/balance', async (req, res) => {
-  const { walletId } = req.body as { walletId?: string; address?: string }
+  let { walletId, email } = req.body as { walletId?: string; address?: string; email?: string }
+
+  // If no walletId, try resolving from email
+  if (!walletId && email && isSupabaseConfigured()) {
+    const user = await getUserByEmail(email)
+    if (user?.wallet_id) walletId = user.wallet_id
+  }
 
   if (!walletId) return res.status(400).json({ error: 'walletId is required.' })
 
