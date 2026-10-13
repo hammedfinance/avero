@@ -9,9 +9,8 @@ RUN bun install
 # Copy the rest of the source
 COPY . .
 
-# Expose the port Railway assigns
-ENV PORT=3001
-EXPOSE $PORT
+# Railway injects PORT at runtime — do NOT hardcode it here
+EXPOSE 3000
 
 # Start the backend server
 CMD ["bun", "run", "server/index.ts"]
