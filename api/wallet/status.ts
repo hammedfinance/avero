@@ -1,6 +1,6 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node'
-import { isCircleConfigured, getTransactionStatus } from '../_circle.js'
-import { isSupabaseConfigured, updateTx } from '../_db.js'
+import { isCircleConfigured, getTransactionStatus } from '../_circle'
+import { isSupabaseConfigured, updateTx } from '../_db'
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== 'GET') return res.status(405).json({ error: 'Method not allowed' })

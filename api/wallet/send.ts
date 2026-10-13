@@ -1,7 +1,7 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node'
-import { isSupabaseConfigured, getUserByEmail, upsertUser, createTx } from '../_db.js'
-import { isCircleConfigured, sendUsdc } from '../_circle.js'
-import { sendPaymentNotification, sendPaymentReceipt } from '../_email.js'
+import { isSupabaseConfigured, getUserByEmail, upsertUser, createTx } from '../_db'
+import { isCircleConfigured, sendUsdc } from '../_circle'
+import { sendPaymentNotification, sendPaymentReceipt } from '../_email'
 import { randomUUID } from 'crypto'
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
