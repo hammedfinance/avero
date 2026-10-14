@@ -44,6 +44,11 @@ function getClient(): SupabaseClient {
   return createClient(url, key)
 }
 
+// Alias for use in API route files
+export function getSupabaseServer(): SupabaseClient {
+  return getClient()
+}
+
 export function isSupabaseConfigured(): boolean {
   return !!(process.env.VITE_SUPABASE_URL && process.env.VITE_SUPABASE_ANON_KEY)
 }

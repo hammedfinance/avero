@@ -21,6 +21,14 @@ type TxItem = {
   amount: string
   status: 'completed' | 'pending' | 'failed'
   date: string
+  rawAmount: number
+}
+
+function normalizeStatus(s: string): 'completed' | 'pending' | 'failed' {
+  const up = s?.toUpperCase() ?? ''
+  if (['COMPLETE', 'COMPLETED', 'CONFIRMED', 'SENT', 'SUCCESS'].includes(up)) return 'completed'
+  if (['FAILED', 'CANCELLED', 'CANCELED'].includes(up)) return 'failed'
+  return 'pending'
 }
 
 function StatusBadge({ status }: { status: TxItem['status'] }) {
@@ -40,6 +48,9 @@ export function OverviewPage({ user, onNavigate }: OverviewPageProps) {
   const [balance, setBalance]         = useState<string | null>(null)
   const [balanceLoading, setBalanceLoading] = useState(false)
   const [recentTxns, setRecentTxns]   = useState<TxItem[]>([])
+  const [sentTotal, setSentTotal]     = useState<string>('—')
+  const [recvTotal, setRecvTotal]     = useState<string>('—')
+  const [linkCount, setLinkCount]     = useState<string>('—')
 
   // ── Fetch balance ─────────────────────────────────────────────
   useEffect(() => {
@@ -72,17 +83,27 @@ export function OverviewPage({ user, onNavigate }: OverviewPageProps) {
           created_at: string
         }
         const raw: RawTx[] = (data.transactions) ?? []
+        // Compute stats from ALL transactions
+        const now = new Date()
+        const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1)
+        let sentSum = 0, recvSum = 0
+        raw.forEach((t) => {
+          const amt = parseFloat(t.amount) || 0
+          const isSent = t.sender_email.toLowerCase() === user.email.toLowerCase()
+          const txDate = new Date(t.created_at)
+          if (isSent && txDate >= startOfMonth) sentSum += amt
+          if (!isSent) recvSum += amt
+        })
+        setSentTotal(`$${sentSum.toFixed(2)}`)
+        setRecvTotal(`$${recvSum.toFixed(2)}`)
+
         const mapped: TxItem[] = raw.slice(0, 5).map((t) => ({
           id: t.id,
-          type: t.sender_email === user.email ? 'sent' : 'received',
-          email: t.sender_email === user.email ? t.recipient_email : t.sender_email,
+          type: t.sender_email.toLowerCase() === user.email.toLowerCase() ? 'sent' : 'received',
+          email: t.sender_email.toLowerCase() === user.email.toLowerCase() ? t.recipient_email : t.sender_email,
           amount: fmt(t.amount),
-          status:
-            t.status === 'CONFIRMED' || t.status === 'COMPLETE' || t.status === 'completed'
-              ? 'completed'
-              : t.status === 'FAILED' || t.status === 'failed'
-              ? 'failed'
-              : 'pending',
+          rawAmount: parseFloat(t.amount) || 0,
+          status: normalizeStatus(t.status),
           date: new Date(t.created_at).toLocaleDateString('en-US', {
             month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit',
           }),
@@ -90,6 +111,17 @@ export function OverviewPage({ user, onNavigate }: OverviewPageProps) {
         setRecentTxns(mapped)
       })
       .catch(() => { /* non-fatal */ })
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isDemo, user.id])
+
+  // ── Fetch payment links count ─────────────────────────────────
+  useEffect(() => {
+    if (isDemo || !user.id) return
+    void import('../lib/api').then(({ paymentLinksApi }) => {
+      paymentLinksApi.list(user.id)
+        .then((d) => setLinkCount(String((d.links as unknown[])?.length ?? 0)))
+        .catch(() => { /* non-fatal */ })
+    })
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isDemo, user.id])
 
@@ -158,10 +190,10 @@ export function OverviewPage({ user, onNavigate }: OverviewPageProps) {
         {/* Quick stats */}
         <div className="grid grid-cols-2 gap-3">
           {[
-            { label: 'Sent this month',  value: '—', icon: ArrowUpRight,  color: 'text-[#A3A3A3]' },
-            { label: 'Received',         value: '—', icon: ArrowDownLeft, color: 'text-[#A3A3A3]' },
-            { label: 'Payment links',    value: '—', icon: Link2,         color: 'text-[#A3A3A3]' },
-            { label: 'Transactions',     value: String(recentTxns.length || '—'), icon: ArrowUpRight, color: 'text-[#A3A3A3]' },
+            { label: 'Sent this month',  value: sentTotal,  icon: ArrowUpRight,  color: 'text-[#f87171]' },
+            { label: 'Received',         value: recvTotal,  icon: ArrowDownLeft, color: 'text-[#4ade80]' },
+            { label: 'Payment links',    value: linkCount,  icon: Link2,         color: 'text-[#A3A3A3]' },
+            { label: 'Transactions',     value: String(recentTxns.length || '0'), icon: ArrowUpRight, color: 'text-[#A3A3A3]' },
           ].map((stat) => (
             <Card key={stat.label} padding="sm" className="flex flex-col gap-2">
               <stat.icon size={14} className={stat.color} />

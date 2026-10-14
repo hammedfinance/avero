@@ -41,7 +41,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const tx = await createTx({
       senderEmail, senderId: sender.id,
       recipientEmail, amount: amountStr,
-      status: 'PENDING', message,
+      status: 'INITIATED', message,
     })
 
     if (!recipientAddress) {

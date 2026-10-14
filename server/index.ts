@@ -249,7 +249,7 @@ app.post('/wallet/send', async (req, res) => {
       recipientEmail,
       amount: amountStr,
       message: message ?? undefined,
-      status: 'PENDING',
+      status: 'INITIATED',
     })
 
     // 4. Execute Circle transfer

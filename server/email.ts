@@ -25,6 +25,12 @@ function fromAddress(): string {
 
 // ── Send "you have USDC waiting" notification ─────────────────
 
+function isResend403(err: unknown): boolean {
+  if (!err || typeof err !== 'object') return false
+  const e = err as Record<string, unknown>
+  return e['statusCode'] === 403 || (typeof e['message'] === 'string' && (e['message'] as string).includes('own email address'))
+}
+
 export async function sendPaymentNotification(params: {
   recipientEmail: string
   senderEmail: string
@@ -38,6 +44,7 @@ export async function sendPaymentNotification(params: {
   const displayAmount = parseFloat(params.amount).toFixed(2)
   const appUrl = 'https://avero.app'
 
+  try {
   await resend.emails.send({
     from,
     to: params.recipientEmail,
@@ -59,6 +66,13 @@ export async function sendPaymentNotification(params: {
       appUrl,
     }),
   })
+  } catch (err) {
+    if (isResend403(err)) {
+      console.warn('[email] Resend domain not verified — email skipped. Verify useavero.xyz in Resend to send to any address.')
+      return
+    }
+    throw err
+  }
 }
 
 // ── HTML email template ───────────────────────────────────────

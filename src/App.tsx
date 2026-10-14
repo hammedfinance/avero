@@ -11,6 +11,7 @@ import { PaymentLinksPage } from './components/PaymentLinksPage'
 import { TransactionsPage } from './components/TransactionsPage'
 import { WalletPage } from './components/WalletPage'
 import { AverUser, buildAverUser, setSession, clearSession, getSession } from './lib/auth'
+import { PayPage } from './components/PayPage'
 
 // ── Types ──────────────────────────────────────────────────────────────────
 
@@ -109,6 +110,12 @@ export default function App() {
     setUser(null)
     setView('landing')
     setDashView('overview')
+  }
+
+  // Handle /pay/:slug routes — after all hooks
+  const paySlugMatch = window.location.pathname.match(/^\/pay\/([a-z0-9]+)$/i)
+  if (paySlugMatch) {
+    return <PayPage slug={paySlugMatch[1]} />
   }
 
   if (view === 'landing') {

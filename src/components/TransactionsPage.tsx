@@ -19,15 +19,23 @@ type Tx = {
   amount: string
   currency: string
   message?: string
-  status: 'completed' | 'pending' | 'failed'
+  status: string
   created_at: string
+}
+
+function normalizeStatus(s: string): 'completed' | 'pending' | 'failed' {
+  const up = s?.toUpperCase() ?? ''
+  if (['COMPLETE', 'COMPLETED', 'CONFIRMED', 'SENT', 'SUCCESS', 'INITIATED'].includes(up)) return 'completed'
+  if (['FAILED', 'CANCELLED', 'CANCELED'].includes(up)) return 'failed'
+  return 'pending'
 }
 
 type Filter = 'all' | 'sent' | 'received'
 
-function StatusBadge({ status }: { status: Tx['status'] }) {
-  if (status === 'completed') return <Badge variant="success">Completed</Badge>
-  if (status === 'pending') return <Badge variant="pending">Pending</Badge>
+function StatusBadge({ status }: { status: string }) {
+  const s = normalizeStatus(status)
+  if (s === 'completed') return <Badge variant="success">Completed</Badge>
+  if (s === 'pending') return <Badge variant="pending">Pending</Badge>
   return <Badge variant="danger">Failed</Badge>
 }
 
@@ -57,7 +65,7 @@ export function TransactionsPage({ user }: TransactionsPageProps) {
     setLoading(true)
     try {
       const data = await transactionsApi.list(user.id)
-      setTxns(data.transactions as Tx[])
+      setTxns(data.transactions)
     } catch (err) {
       if (err instanceof ApiError && err.isConfigBoundary) {
         setConfigBoundary({ message: err.message, envVars: err.requiredEnv ?? [] })
