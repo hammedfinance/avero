@@ -1,5 +1,20 @@
 import { createClient } from '@supabase/supabase-js'
 import { Resend } from 'resend'
+import * as crypto from 'crypto'
+
+function generateEntitySecretCiphertext(entitySecret: string, publicKey: string): string {
+  const entitySecretBytes = Buffer.from(entitySecret, 'hex')
+  const pubKey = crypto.createPublicKey({
+    key: Buffer.from(publicKey, 'base64'),
+    format: 'der',
+    type: 'spki',
+  })
+  const encrypted = crypto.publicEncrypt(
+    { key: pubKey, padding: crypto.constants.RSA_PKCS1_OAEP_PADDING, oaepHash: 'sha256' },
+    entitySecretBytes
+  )
+  return encrypted.toString('base64')
+}
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' })
@@ -48,10 +63,17 @@ export default async function handler(req, res) {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        idempotencyKey: `avero-send-${senderEmail}-${recipientEmail}-${Date.now()}`,
+        idempotencyKey: crypto.randomUUID(),
+        entitySecretCiphertext: await (async () => {
+          const pkResp = await fetch('https://api.circle.com/v1/w3s/config/entity/publicKey', {
+            headers: { 'Authorization': `Bearer ${process.env.CIRCLE_API_KEY}` },
+          })
+          const pkData = await pkResp.json()
+          return generateEntitySecretCiphertext(process.env.CIRCLE_ENTITY_SECRET!, pkData.data?.publicKey)
+        })(),
         walletId,
         destinationAddress: recipientAddress,
-        tokenId: '15dc2b5d-0994-58b0-bf8c-3a0501148ee8', // USDC on ARC-TESTNET
+        tokenId: '15dc2b5d-0994-58b0-bf8c-3a0501148ee8',
         amounts: [String(amount)],
         feeLevel: 'MEDIUM',
       }),

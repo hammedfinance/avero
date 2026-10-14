@@ -1,4 +1,19 @@
 import { createClient } from '@supabase/supabase-js'
+import * as crypto from 'crypto'
+
+function generateEntitySecretCiphertext(entitySecret: string, publicKey: string): string {
+  const entitySecretBytes = Buffer.from(entitySecret, 'hex')
+  const pubKey = crypto.createPublicKey({
+    key: Buffer.from(publicKey, 'base64'),
+    format: 'der',
+    type: 'spki',
+  })
+  const encrypted = crypto.publicEncrypt(
+    { key: pubKey, padding: crypto.constants.RSA_PKCS1_OAEP_PADDING, oaepHash: 'sha256' },
+    entitySecretBytes
+  )
+  return encrypted.toString('base64')
+}
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' })
@@ -10,15 +25,26 @@ export default async function handler(req, res) {
   if (user?.wallet_id) return res.status(200).json({ walletId: user.wallet_id, address: user.wallet_address })
 
   try {
+    // Get Circle public key for entity secret encryption
+    const pkResp = await fetch('https://api.circle.com/v1/w3s/config/entity/publicKey', {
+      headers: { 'Authorization': `Bearer ${process.env.CIRCLE_API_KEY}` },
+    })
+    const pkData = await pkResp.json()
+    const publicKey = pkData.data?.publicKey
+    if (!publicKey) return res.status(500).json({ error: 'Could not get Circle public key' })
+
+    const entitySecret = process.env.CIRCLE_ENTITY_SECRET!
+    const ciphertext = generateEntitySecretCiphertext(entitySecret, publicKey)
+
     const resp = await fetch('https://api.circle.com/v1/w3s/developer/wallets', {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${process.env.CIRCLE_API_KEY}`,
         'Content-Type': 'application/json',
-        'X-User-Token': '',
       },
       body: JSON.stringify({
-        idempotencyKey: `avero-${email}-${Date.now()}`,
+        idempotencyKey: crypto.randomUUID(),
+        entitySecretCiphertext: ciphertext,
         accountType: 'EOA',
         blockchains: ['ARC-TESTNET'],
         count: 1,
