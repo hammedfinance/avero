@@ -1,5 +1,4 @@
 import { createClient } from '@supabase/supabase-js'
-import { initiateDeveloperControlledWalletsClient } from '@circle-fin/developer-controlled-wallets'
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' })
@@ -11,18 +10,25 @@ export default async function handler(req, res) {
   if (user?.wallet_id) return res.status(200).json({ walletId: user.wallet_id, address: user.wallet_address })
 
   try {
-    const client = initiateDeveloperControlledWalletsClient({
-      apiKey: process.env.CIRCLE_API_KEY!,
-      entitySecret: process.env.CIRCLE_ENTITY_SECRET!,
+    const resp = await fetch('https://api.circle.com/v1/w3s/developer/wallets', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${process.env.CIRCLE_API_KEY}`,
+        'Content-Type': 'application/json',
+        'X-User-Token': '',
+      },
+      body: JSON.stringify({
+        idempotencyKey: `avero-${email}-${Date.now()}`,
+        accountType: 'EOA',
+        blockchains: ['ARC-TESTNET'],
+        count: 1,
+        walletSetId: process.env.CIRCLE_WALLET_SET_ID,
+      }),
     })
-    const resp = await client.createWallets({
-      blockchains: ['ARC-TESTNET'],
-      count: 1,
-      walletSetId: process.env.CIRCLE_WALLET_SET_ID!,
-      idempotencyKey: `avero-create-${email}-${Date.now()}`,
-    })
-    const wallet = resp.data?.wallets?.[0]
-    if (!wallet) return res.status(500).json({ error: 'Circle createWallets returned no wallet' })
+    const data = await resp.json()
+    if (!resp.ok) return res.status(500).json({ error: JSON.stringify(data) })
+    const wallet = data.data?.wallets?.[0]
+    if (!wallet) return res.status(500).json({ error: 'No wallet returned', raw: data })
     await db.from('users').update({ wallet_id: wallet.id, wallet_address: wallet.address }).eq('email', email)
     return res.status(200).json({ walletId: wallet.id, address: wallet.address })
   } catch (e) {

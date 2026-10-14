@@ -1,5 +1,4 @@
 import { createClient } from '@supabase/supabase-js'
-import { initiateDeveloperControlledWalletsClient } from '@circle-fin/developer-controlled-wallets'
 
 export default async function handler(req, res) {
   const { walletId, email } = req.query
@@ -13,12 +12,11 @@ export default async function handler(req, res) {
   if (!wId) return res.status(400).json({ error: 'walletId or email required' })
 
   try {
-    const client = initiateDeveloperControlledWalletsClient({
-      apiKey: process.env.CIRCLE_API_KEY!,
-      entitySecret: process.env.CIRCLE_ENTITY_SECRET!,
+    const resp = await fetch(`https://api.circle.com/v1/w3s/wallets/${wId}/balances`, {
+      headers: { 'Authorization': `Bearer ${process.env.CIRCLE_API_KEY}` },
     })
-    const resp = await client.getWalletTokenBalance({ id: wId })
-    const balances = resp.data?.tokenBalances || []
+    const data = await resp.json()
+    const balances = data.data?.tokenBalances || []
     const usdc = balances.find((b) => b.token?.symbol === 'USDC' || b.token?.name?.includes('USD'))
     return res.status(200).json({ balance: usdc?.amount || '0', tokenBalances: balances })
   } catch (e) {
