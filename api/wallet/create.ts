@@ -1,40 +1,31 @@
-import type { VercelRequest, VercelResponse } from '@vercel/node'
-import { isSupabaseConfigured, getUserByEmail, upsertUser, updateUserWallet } from '../_db'
-import { isCircleConfigured, createUserWallet } from '../_circle'
+import { createClient } from '@supabase/supabase-js'
+import { initiateDeveloperControlledWalletsClient } from '@circle-fin/developer-controlled-wallets'
 
-export default async function handler(req: VercelRequest, res: VercelResponse) {
+export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' })
+  const { email } = req.body
+  if (!email) return res.status(400).json({ error: 'email required' })
 
-  const { userId, email } = req.body as { userId?: string; email?: string }
-  if (!email && !userId) return res.status(400).json({ error: 'email or userId is required.' })
-
-  if (!isCircleConfigured()) {
-    return res.status(501).json({ error: 'Circle not configured.', requiredEnv: ['CIRCLE_API_KEY', 'CIRCLE_ENTITY_SECRET', 'CIRCLE_WALLET_SET_ID'] })
-  }
+  const db = createClient(process.env.VITE_SUPABASE_URL!, process.env.VITE_SUPABASE_ANON_KEY!)
+  const { data: user } = await db.from('users').select('*').eq('email', email).maybeSingle()
+  if (user?.wallet_id) return res.status(200).json({ walletId: user.wallet_id, address: user.wallet_address })
 
   try {
-    if (email && isSupabaseConfigured()) {
-      const user = await getUserByEmail(email)
-      if (user?.wallet_id) {
-        return res.json({ walletId: user.wallet_id, address: user.wallet_address, existing: true })
-      }
-      if (user) {
-        const { walletId, address } = await createUserWallet(user.id)
-        await updateUserWallet(user.id, walletId, address)
-        return res.json({ walletId, address })
-      }
-    }
-
-    const refId = userId ?? email ?? 'unknown'
-    const { walletId, address } = await createUserWallet(refId)
-
-    if (email && isSupabaseConfigured()) {
-      await upsertUser({ id: refId, email, walletId, walletAddress: address })
-    }
-
-    return res.json({ walletId, address })
-  } catch (err) {
-    console.error('[wallet/create] error:', err)
-    return res.status(500).json({ error: 'Failed to create wallet.' })
+    const client = initiateDeveloperControlledWalletsClient({
+      apiKey: process.env.CIRCLE_API_KEY!,
+      entitySecret: process.env.CIRCLE_ENTITY_SECRET!,
+    })
+    const resp = await client.createWallets({
+      blockchains: ['ARC-TESTNET'],
+      count: 1,
+      walletSetId: process.env.CIRCLE_WALLET_SET_ID!,
+      idempotencyKey: `avero-create-${email}-${Date.now()}`,
+    })
+    const wallet = resp.data?.wallets?.[0]
+    if (!wallet) return res.status(500).json({ error: 'Circle createWallets returned no wallet' })
+    await db.from('users').update({ wallet_id: wallet.id, wallet_address: wallet.address }).eq('email', email)
+    return res.status(200).json({ walletId: wallet.id, address: wallet.address })
+  } catch (e) {
+    return res.status(500).json({ error: String(e) })
   }
 }

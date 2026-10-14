@@ -1,24 +1,11 @@
-import type { VercelRequest, VercelResponse } from '@vercel/node'
-import { isSupabaseConfigured, getUserByEmail, getPaymentLinksByUser } from '../_db'
+import { createClient } from '@supabase/supabase-js'
 
-export default async function handler(req: VercelRequest, res: VercelResponse) {
-  if (req.method !== 'GET') return res.status(405).json({ error: 'Method not allowed' })
-
-  const { userId, email } = req.query as { userId?: string; email?: string }
-
-  if (!isSupabaseConfigured()) return res.status(501).json({ error: 'Supabase not configured.' })
-
-  try {
-    let resolvedUserId = userId ?? ''
-    if (email) {
-      const user = await getUserByEmail(email)
-      if (user) resolvedUserId = user.id
-    }
-    if (!resolvedUserId) return res.status(400).json({ error: 'userId or email required.' })
-
-    const links = await getPaymentLinksByUser(resolvedUserId)
-    return res.json({ links })
-  } catch (err) {
-    return res.status(500).json({ error: String(err) })
-  }
+export default async function handler(req, res) {
+  const { email } = req.query
+  if (!email) return res.status(400).json({ error: 'email required' })
+  const db = createClient(process.env.VITE_SUPABASE_URL!, process.env.VITE_SUPABASE_ANON_KEY!)
+  const { data: user } = await db.from('users').select('id').eq('email', email as string).maybeSingle()
+  if (!user) return res.status(200).json({ links: [] })
+  const { data } = await db.from('payment_links').select('*').eq('user_id', user.id).order('created_at', { ascending: false })
+  return res.status(200).json({ links: data || [] })
 }

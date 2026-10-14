@@ -1,37 +1,58 @@
-import type { VercelRequest, VercelResponse } from '@vercel/node'
-import { isSupabaseConfigured, getUserByEmail, upsertUser, updateUserWallet } from '../_db'
-import { isCircleConfigured, createUserWallet } from '../_circle'
+import { createClient } from '@supabase/supabase-js'
+import { initiateDeveloperControlledWalletsClient } from '@circle-fin/developer-controlled-wallets'
 
-export default async function handler(req: VercelRequest, res: VercelResponse) {
+export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' })
+  const { id, email, name } = req.body
+  if (!email) return res.status(400).json({ error: 'email required' })
 
-  const { id, email, name } = req.body as { id?: string; email?: string; name?: string }
-  if (!id || !email) return res.status(400).json({ error: 'id and email are required.' })
-
-  if (!isSupabaseConfigured()) {
-    return res.status(501).json({ error: 'Supabase not configured.', requiredEnv: ['VITE_SUPABASE_URL', 'VITE_SUPABASE_ANON_KEY'] })
-  }
+  const supaUrl = process.env.VITE_SUPABASE_URL
+  const supaKey = process.env.VITE_SUPABASE_ANON_KEY
+  if (!supaUrl || !supaKey) return res.status(503).json({ error: 'SUPABASE_NOT_CONFIGURED' })
+  const db = createClient(supaUrl, supaKey)
 
   try {
-    await upsertUser({ id, email, name })
-    const user = await getUserByEmail(email)
-    if (!user) return res.status(500).json({ error: 'Failed to find user after upsert.' })
+    // Check if user exists
+    const { data: existing } = await db.from('users').select('*').eq('email', email).maybeSingle()
 
-    if (!user.wallet_id && isCircleConfigured()) {
+    let userId = existing?.id || id || crypto.randomUUID()
+    let walletId = existing?.wallet_id
+    let walletAddress = existing?.wallet_address
+
+    if (!existing) {
+      await db.from('users').insert({ id: userId, email, name: name || null, wallet_id: null, wallet_address: null })
+    } else if (name && !existing.name) {
+      await db.from('users').update({ name }).eq('email', email)
+    }
+
+    // Create Circle wallet if not exists
+    const apiKey = process.env.CIRCLE_API_KEY
+    const entitySecret = process.env.CIRCLE_ENTITY_SECRET
+    const walletSetId = process.env.CIRCLE_WALLET_SET_ID
+    if (apiKey && entitySecret && walletSetId && !walletId) {
       try {
-        const { walletId, address } = await createUserWallet(user.id)
-        await updateUserWallet(user.id, walletId, address)
-        const updated = await getUserByEmail(email)
-        return res.json({ user: updated, walletProvisioned: true })
-      } catch (walletErr) {
-        console.error('[auth/upsert] wallet creation failed:', walletErr)
-        return res.json({ user, walletProvisioned: false, walletError: String(walletErr) })
+        const client = initiateDeveloperControlledWalletsClient({ apiKey, entitySecret })
+        const resp = await client.createWallets({
+          blockchains: ['ARC-TESTNET'],
+          count: 1,
+          walletSetId,
+          idempotencyKey: `avero-${email}-${Date.now()}`,
+        })
+        const wallet = resp.data?.wallets?.[0]
+        if (wallet) {
+          walletId = wallet.id
+          walletAddress = wallet.address
+          await db.from('users').update({ wallet_id: walletId, wallet_address: walletAddress }).eq('email', email)
+        }
+      } catch (e) {
+        console.error('Circle wallet creation error:', e)
       }
     }
 
-    return res.json({ user, walletProvisioned: !!user.wallet_id })
-  } catch (err) {
-    console.error('[auth/upsert] error:', err)
-    return res.status(500).json({ error: 'Failed to upsert user.' })
+    const { data: user } = await db.from('users').select('*').eq('email', email).maybeSingle()
+    return res.status(200).json({ user })
+  } catch (e) {
+    console.error('upsert error:', e)
+    return res.status(500).json({ error: String(e) })
   }
 }
