@@ -4,9 +4,8 @@ import * as crypto from 'crypto'
 function generateEntitySecretCiphertext(entitySecret: string, publicKey: string): string {
   const entitySecretBytes = Buffer.from(entitySecret, 'hex')
   const pubKey = crypto.createPublicKey({
-    key: Buffer.from(publicKey, 'base64'),
-    format: 'der',
-    type: 'spki',
+    key: publicKey.includes('BEGIN') ? publicKey : `-----BEGIN PUBLIC KEY-----\n${publicKey}\n-----END PUBLIC KEY-----`,
+    format: 'pem',
   })
   const encrypted = crypto.publicEncrypt(
     { key: pubKey, padding: crypto.constants.RSA_PKCS1_OAEP_PADDING, oaepHash: 'sha256' },
