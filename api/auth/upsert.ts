@@ -31,11 +31,17 @@ export default async function handler(req, res) {
         const wallet = data.data?.wallets?.[0]
         if (wallet) {
           await db.from('users').update({ wallet_id: wallet.id, wallet_address: wallet.address, name: name || existing.name }).eq('email', email)
-          return res.status(200).json({ ...existing, wallet_id: wallet.id, wallet_address: wallet.address })
+          return res.status(200).json({ id: existing.id, email: existing.email, name: existing.name, walletId: wallet.id, walletAddress: wallet.address })
         }
       } catch (_) {}
     }
-    return res.status(200).json(existing)
+    return res.status(200).json({
+      id: existing.id,
+      email: existing.email,
+      name: existing.name,
+      walletId: existing.wallet_id,
+      walletAddress: existing.wallet_address,
+    })
   }
 
   // Create new user
@@ -63,9 +69,9 @@ export default async function handler(req, res) {
     const wallet = data.data?.wallets?.[0]
     if (wallet) {
       await db.from('users').update({ wallet_id: wallet.id, wallet_address: wallet.address }).eq('email', email)
-      return res.status(200).json({ ...newUser, wallet_id: wallet.id, wallet_address: wallet.address })
+      return res.status(200).json({ id: newUser.id, email: newUser.email, name: newUser.name, walletId: wallet.id, walletAddress: wallet.address })
     }
   } catch (_) {}
 
-  return res.status(200).json(newUser)
+  return res.status(200).json({ id: newUser.id, email: newUser.email, name: newUser.name, walletId: null, walletAddress: null })
 }

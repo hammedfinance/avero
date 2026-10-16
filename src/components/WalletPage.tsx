@@ -65,14 +65,14 @@ export function WalletPage({ user }: WalletPageProps) {
   // ── Load balance ─────────────────────────────────────────────
   const loadBalance = useCallback(async (wId?: string) => {
     const id = wId ?? walletId
-    if (!id) return
     setBalanceLoading(true)
     try {
-      const data = await walletApi.balance(id, walletAddress)
-      const usdc = data.balances?.find((b: { token?: { symbol?: string }; amount?: string }) =>
-        b.token?.symbol?.toUpperCase() === 'USDC'
-      )
-      setBalance(usdc?.amount ?? data.nativeBalance ?? '0')
+      const params = new URLSearchParams()
+      if (id) params.set('walletId', id)
+      if (user.email) params.set('email', user.email)
+      const resp = await fetch(`/api/wallet/balance?${params}`)
+      const data = await resp.json()
+      if (data.balance) setBalance(data.balance)
     } catch (err) {
       if (err instanceof ApiError && err.isConfigBoundary) {
         setConfigBoundary({ message: err.message, envVars: err.requiredEnv ?? [] })
@@ -80,13 +80,13 @@ export function WalletPage({ user }: WalletPageProps) {
     } finally {
       setBalanceLoading(false)
     }
-  }, [walletId, walletAddress])
+  }, [walletId, walletAddress, user.email])
 
   useEffect(() => {
-    if (isDemo || !walletId) return
+    if (isDemo) return
     void loadBalance()
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isDemo, walletId])
+  }, [isDemo])
 
   // ── Provision wallet ─────────────────────────────────────────
   async function provisionWallet() {

@@ -54,19 +54,18 @@ export function OverviewPage({ user, onNavigate }: OverviewPageProps) {
 
   // ── Fetch balance ─────────────────────────────────────────────
   useEffect(() => {
-    if (isDemo || !user.walletId) return
+    if (isDemo) return
     setBalanceLoading(true)
-    walletApi
-      .balance(user.walletId, user.walletAddress)
-      .then((data) => {
-        const usdc = (data.balances as Array<{ token?: { symbol?: string }; amount?: string }>)
-          ?.find((b) => b.token?.symbol?.toUpperCase() === 'USDC')
-        setBalance(usdc?.amount ?? data.nativeBalance ?? '0')
-      })
-      .catch(() => { /* non-fatal — show dash */ })
+    const params = new URLSearchParams()
+    if (user.walletId) params.set('walletId', user.walletId)
+    if (user.email) params.set('email', user.email)
+    fetch(`/api/wallet/balance?${params}`)
+      .then((r) => r.json())
+      .then((data) => { if (data.balance) setBalance(data.balance) })
+      .catch(() => { /* non-fatal */ })
       .finally(() => setBalanceLoading(false))
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isDemo, user.walletId])
+  }, [isDemo, user.email])
 
   // ── Fetch recent transactions ─────────────────────────────────
   useEffect(() => {
