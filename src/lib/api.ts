@@ -1,4 +1,14 @@
 // Avero API client — all calls go through the Vite proxy at /api
+import type {
+  AuthUpsertPayload, AuthUpsertResponse,
+  WalletCreateResponse, WalletBalancePayload, WalletBalanceResponse,
+  SendPayload, SendResponse,
+  TxStatusResponse,
+  PaymentLinkCreatePayload, PaymentLinkCreateResponse, PaymentLinksListResponse,
+  TransactionsListResponse,
+  RequestCreatePayload, RequestCreateResponse, RequestsListResponse,
+  UserLookupResponse,
+} from '@/types/api'
 
 const BASE = '/api'
 
@@ -47,68 +57,50 @@ export class ApiError extends Error {
 
 // ── Auth ──
 export const authApi = {
-  register: (email: string, password: string, name: string) =>
-    request<{ user: { id: string; email: string } }>('POST', '/auth/register', { email, password, name }),
-  login: (email: string, password: string) =>
-    request<{ user: { id: string; email: string }; session: { access_token: string } }>('POST', '/auth/login', { email, password }),
+  upsert: (payload: AuthUpsertPayload) =>
+    request<AuthUpsertResponse>('POST', '/auth/upsert', payload),
 }
 
 // ── Wallet ──
 export const walletApi = {
   create: (userId: string, email: string) =>
-    request<{ walletId: string; address: string }>('POST', '/wallet/create', { userId, email }),
-  balance: (walletId?: string, address?: string) =>
-    request<{ balances: Array<{ amount: string; token?: { symbol?: string } }>; nativeBalance: string | null; nativeSymbol: string }>('POST', '/wallet/balance', { walletId, address }),
-  send: (payload: { senderEmail: string; recipientEmail: string; amount: string; walletId?: string; message?: string }) =>
-    request<{ success: boolean; transactionId: string; circleTransactionId?: string; status: string }>('POST', '/wallet/send', payload),
+    request<WalletCreateResponse>('POST', '/wallet/create', { userId, email }),
+  balance: (payload: WalletBalancePayload) =>
+    request<WalletBalanceResponse>('POST', '/wallet/balance', payload),
+  send: (payload: SendPayload) =>
+    request<SendResponse>('POST', '/wallet/send', payload),
 }
 
 // ── Transaction status (polling) ──
 export const txStatusApi = {
   get: (circleTransactionId: string) =>
-    request<{
-      status: string
-      txHash: string | null
-      blockExplorerUrl: string | null
-    }>('GET', `/wallet/status/${encodeURIComponent(circleTransactionId)}`),
+    request<TxStatusResponse>('GET', `/wallet/status/${encodeURIComponent(circleTransactionId)}`),
 }
 
 // ── Payment links ──
 export const paymentLinksApi = {
-  create: (userId: string, userEmail: string, title: string, amount: number) =>
-    request<{ id: string; slug: string; url: string }>('POST', '/payments/create', { userId, userEmail, title, amount }),
+  create: (payload: PaymentLinkCreatePayload) =>
+    request<PaymentLinkCreateResponse>('POST', '/payments/create', payload),
   list: (userId: string) =>
-    request<{ links: Array<{ id: string; slug: string; title: string; amount: number; status: string; created_at: string }> }>('GET', '/payments/list', undefined, { userId }),
+    request<PaymentLinksListResponse>('GET', '/payments/list', undefined, { userId }),
 }
 
 // ── Transactions ──
 export const transactionsApi = {
   list: (userId: string) =>
-    request<{ transactions: Array<{ id: string; sender_email: string; recipient_email: string; amount: string; currency: string; message?: string; status: string; created_at: string }> }>('GET', '/transactions/list', undefined, { userId }),
+    request<TransactionsListResponse>('GET', '/transactions/list', undefined, { userId }),
 }
 
 // ── Payment Requests ──
 export const requestApi = {
-  create: (payload: {
-    requesterEmail: string
-    requesterId: string
-    recipientEmail?: string
-    amount: string
-    note?: string
-  }) =>
-    request<{ id: string; slug: string; url: string }>('POST', '/requests/create', payload),
+  create: (payload: RequestCreatePayload) =>
+    request<RequestCreateResponse>('POST', '/requests/create', payload),
   list: (userId: string) =>
-    request<{
-      requests: Array<{
-        id: string; slug: string; requester_email: string
-        recipient_email: string | null; amount: string
-        note: string | null; status: string; created_at: string
-      }>
-    }>('GET', '/requests/list', undefined, { userId }),
+    request<RequestsListResponse>('GET', '/requests/list', undefined, { userId }),
 }
 
 // ── User ──
 export const userApi = {
   lookup: (email: string) =>
-    request<{ user: { id: string; email: string; username?: string } | null }>('GET', '/user/lookup', undefined, { email }),
+    request<UserLookupResponse>('GET', '/user/lookup', undefined, { email }),
 }

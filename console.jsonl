@@ -188,3 +188,17 @@
 {"level":"log","message":"listen https://wallet.binance.com/tonbridge/bridge/events?client_id=ce639ab5483fca62a6bebf2df5ff3e5854368a938d1a8cd810ed94b7117b485d&user_info=","timestamp":1792132957963}
 {"level":"error","message":"[vite] failed to connect to websocket.\nyour current setup:\n  (browser) i5ctsm3hurjqnxpqypxmo.preview.studio.arc.io/ <--[HTTP]--> localhost:5173/ (server)\n  (browser) i5ctsm3hurjqnxpqypxmo.preview.studio.arc.io:/ <--[WebSocket (failing)]--> localhost:5173/ (server)\nCheck out your Vite / network configuration and https://vite.dev/config/server-options.html#server-hmr .","timestamp":1792132976654}
 {"level":"log","message":"error {\"isTrusted\":true}","timestamp":1792132981987}
+{"level":"error","message":"[vite] failed to connect to websocket.\nyour current setup:\n  (browser) i5ctsm3hurjqnxpqypxmo.preview.studio.arc.io/ <--[HTTP]--> localhost:5173/ (server)\n  (browser) i5ctsm3hurjqnxpqypxmo.preview.studio.arc.io:/ <--[WebSocket (failing)]--> localhost:5173/ (server)\nCheck out your Vite / network configuration and https://vite.dev/config/server-options.html#server-hmr .","timestamp":1792133291111}
+{"level":"log","message":"restart sse, about to listen","timestamp":1792133305801}
+{"level":"log","message":"listen https://wallet.binance.com/tonbridge/bridge/events?client_id=ce639ab5483fca62a6bebf2df5ff3e5854368a938d1a8cd810ed94b7117b485d&user_info=","timestamp":1792133305801}
+{"level":"log","message":"error {\"isTrusted\":true}","timestamp":1792133329546}
+{"level":"log","message":"restart sse, about to listen","timestamp":1792133605807}
+{"level":"log","message":"listen https://wallet.binance.com/tonbridge/bridge/events?client_id=ce639ab5483fca62a6bebf2df5ff3e5854368a938d1a8cd810ed94b7117b485d&user_info=","timestamp":1792133605808}
+{"level":"log","message":"error {\"isTrusted\":true}","timestamp":1792133623557}
+{"level":"log","message":"restart sse, about to listen","timestamp":1792133900911}
+{"level":"log","message":"listen https://wallet.binance.com/tonbridge/bridge/events?client_id=ce639ab5483fca62a6bebf2df5ff3e5854368a938d1a8cd810ed94b7117b485d&user_info=","timestamp":1792133900911}
+{"level":"log","message":"restart sse, about to listen","timestamp":1792133905810}
+{"level":"log","message":"listen https://wallet.binance.com/tonbridge/bridge/events?client_id=ce639ab5483fca62a6bebf2df5ff3e5854368a938d1a8cd810ed94b7117b485d&user_info=","timestamp":1792133905811}
+{"level":"log","message":"error {\"isTrusted\":true}","timestamp":1792133923386}
+{"level":"log","message":"error {\"isTrusted\":true}","timestamp":1792133923386}
+{"level":"error","message":"[vite] failed to connect to websocket.\nyour current setup:\n  (browser) i5ctsm3hurjqnxpqypxmo.preview.studio.arc.io/ <--[HTTP]--> localhost:5173/ (server)\n  (browser) i5ctsm3hurjqnxpqypxmo.preview.studio.arc.io:/ <--[WebSocket (failing)]--> localhost:5173/ (server)\nCheck out your Vite / network configuration and https://vite.dev/config/server-options.html#server-hmr .","timestamp":1792134062174}

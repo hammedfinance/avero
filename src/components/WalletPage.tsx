@@ -67,12 +67,9 @@ export function WalletPage({ user }: WalletPageProps) {
     const id = wId ?? walletId
     setBalanceLoading(true)
     try {
-      const params = new URLSearchParams()
-      if (id) params.set('walletId', id)
-      if (user.email) params.set('email', user.email)
-      const resp = await fetch(`/api/wallet/balance?${params}`)
-      const data = await resp.json()
-      if (data.balance) setBalance(data.balance)
+      const data = await walletApi.balance({ walletId: id, email: user.email })
+      const usdcBalance = data.balances?.[0]?.amount ?? data.nativeBalance ?? null
+      if (usdcBalance) setBalance(usdcBalance)
     } catch (err) {
       if (err instanceof ApiError && err.isConfigBoundary) {
         setConfigBoundary({ message: err.message, envVars: err.requiredEnv ?? [] })
@@ -80,7 +77,7 @@ export function WalletPage({ user }: WalletPageProps) {
     } finally {
       setBalanceLoading(false)
     }
-  }, [walletId, walletAddress, user.email])
+  }, [walletId, user.email])
 
   useEffect(() => {
     if (isDemo) return
@@ -92,16 +89,7 @@ export function WalletPage({ user }: WalletPageProps) {
   async function provisionWallet() {
     setProvisioning(true)
     try {
-      const res = await fetch('/api/wallet/create', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ userId: user.id, email: user.email }),
-      })
-      if (!res.ok) {
-        const body = await res.json() as { error?: string }
-        throw new Error(body.error ?? 'Failed to create wallet')
-      }
-      const data = await res.json() as { walletId?: string; address?: string }
+      const data = await walletApi.create(user.id, user.email)
       if (data.walletId && data.address) {
         setWalletId(data.walletId)
         setWalletAddress(data.address)

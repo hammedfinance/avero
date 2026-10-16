@@ -56,12 +56,11 @@ export function OverviewPage({ user, onNavigate }: OverviewPageProps) {
   useEffect(() => {
     if (isDemo) return
     setBalanceLoading(true)
-    const params = new URLSearchParams()
-    if (user.walletId) params.set('walletId', user.walletId)
-    if (user.email) params.set('email', user.email)
-    fetch(`/api/wallet/balance?${params}`)
-      .then((r) => r.json())
-      .then((data) => { if (data.balance) setBalance(data.balance) })
+    walletApi.balance({ walletId: user.walletId, email: user.email })
+      .then((data) => {
+        const usdcBalance = data.balances?.[0]?.amount ?? data.nativeBalance ?? null
+        if (usdcBalance) setBalance(usdcBalance)
+      })
       .catch(() => { /* non-fatal */ })
       .finally(() => setBalanceLoading(false))
   // eslint-disable-next-line react-hooks/exhaustive-deps
