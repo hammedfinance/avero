@@ -59,7 +59,7 @@ export const walletApi = {
     request<{ walletId: string; address: string }>('POST', '/wallet/create', { userId, email }),
   balance: (walletId?: string, address?: string) =>
     request<{ balances: Array<{ amount: string; token?: { symbol?: string } }>; nativeBalance: string | null; nativeSymbol: string }>('POST', '/wallet/balance', { walletId, address }),
-  send: (payload: { senderEmail: string; recipientEmail: string; amount: string; message?: string }) =>
+  send: (payload: { senderEmail: string; recipientEmail: string; amount: string; walletId?: string; message?: string }) =>
     request<{ success: boolean; transactionId: string; circleTransactionId?: string; status: string }>('POST', '/wallet/send', payload),
 }
 

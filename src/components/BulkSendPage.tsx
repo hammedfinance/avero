@@ -98,6 +98,7 @@ export function BulkSendPage({ user }: BulkSendPageProps) {
           senderEmail: user.email,
           recipientEmail: email,
           amount,
+          walletId: user.walletId ?? '',
           message: note.trim() || undefined,
         })
         sendResults.push({
