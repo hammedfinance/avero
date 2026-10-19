@@ -229,3 +229,36 @@
 {"level":"log","message":"[vite] server connection lost. Polling for restart...","timestamp":1792388338949}
 {"level":"debug","message":"[vite] hot updated: /src/App.tsx","timestamp":1792389535319}
 {"level":"debug","message":"[vite] hot updated: /src/index.css","timestamp":1792389535319}
+{"level":"debug","message":"[vite] connected.","timestamp":1792418757335}
+{"level":"debug","message":"[vite] connected.","timestamp":1792422936181}
+{"level":"log","message":"[vite] server connection lost. Polling for restart...","timestamp":1792423506085}
+{"level":"debug","message":"[vite] connected.","timestamp":1792423757178}
+{"level":"debug","message":"[vite] connected.","timestamp":1792423765132}
+{"level":"log","message":"[vite] server connection lost. Polling for restart...","timestamp":1792424535474}
+{"level":"log","message":"[vite] server connection lost. Polling for restart...","timestamp":1792424576497}
+{"level":"log","message":"[vite] server connection lost. Polling for restart...","timestamp":1792424666781}
+{"level":"log","message":"[vite] server connection lost. Polling for restart...","timestamp":1792424819241}
+{"level":"debug","message":"[vite] connected.","timestamp":1792424828959}
+{"level":"log","message":"[vite] server connection lost. Polling for restart...","timestamp":1792425220353}
+{"level":"log","message":"[vite] server connection lost. Polling for restart...","timestamp":1792425277796}
+{"level":"debug","message":"[vite] connected.","timestamp":1792425318805}
+{"level":"log","message":"[vite] server connection lost. Polling for restart...","timestamp":1792425323929}
+{"level":"debug","message":"[vite] hot updated: /src/components/PaymentLinksPage.tsx","timestamp":1792425567808}
+{"level":"debug","message":"[vite] hot updated: /src/index.css","timestamp":1792425567808}
+{"level":"debug","message":"[vite] hot updated: /src/components/PaymentLinksPage.tsx","timestamp":1792425599826}
+{"level":"debug","message":"[vite] hot updated: /src/index.css","timestamp":1792425599826}
+{"level":"debug","message":"[vite] connected.","timestamp":1792425691966}
+{"level":"log","message":"[vite] server connection lost. Polling for restart...","timestamp":1792425698425}
+{"level":"debug","message":"[vite] connected.","timestamp":1792425707046}
+{"level":"log","message":"[vite] server connection lost. Polling for restart...","timestamp":1792425721262}
+{"level":"debug","message":"[vite] connected.","timestamp":1792425747347}
+{"level":"debug","message":"[vite] hot updated: /src/components/PaymentLinksPage.tsx","timestamp":1792425790893}
+{"level":"debug","message":"[vite] hot updated: /src/index.css","timestamp":1792425790893}
+{"level":"log","message":"[vite] server connection lost. Polling for restart...","timestamp":1792425962697}
+{"level":"log","message":"[vite] server connection lost. Polling for restart...","timestamp":1792425979686}
+{"level":"debug","message":"[vite] connected.","timestamp":1792426160536}
+{"level":"log","message":"[vite] server connection lost. Polling for restart...","timestamp":1792426666176}
+{"level":"error","message":"[2026-10-19T16:17:48.860Z] ERROR: [fetchProjectSettings] Failed to fetch project settings, falling back to cached settings TypeError: Load failed","timestamp":1792426668861}
+{"level":"log","message":"[vite] server connection lost. Polling for restart...","timestamp":1792426725165}
+{"level":"log","message":"[vite] server connection lost. Polling for restart...","timestamp":1792426822489}
+{"level":"error","message":"[2026-10-19T16:24:47.710Z] ERROR: [fetchProjectSettings] Failed to fetch project settings, falling back to cached settings TypeError: Load failed","timestamp":1792427087711}

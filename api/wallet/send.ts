@@ -2,6 +2,10 @@ import { createClient } from '@supabase/supabase-js'
 import { Resend } from 'resend'
 import * as crypto from 'crypto'
 
+const ESCROW_ADDRESS = process.env.VITE_ESCROW_ADDRESS!
+const USDC_TOKEN_ID = '15dc2b5d-0994-58b0-bf8c-3a0501148ee8'
+const CIRCLE_API = 'https://api.circle.com/v1/w3s'
+
 function generateEntitySecretCiphertext(entitySecret: string, publicKey: string): string {
   const entitySecretBytes = Buffer.from(entitySecret, 'hex')
   const pubKey = crypto.createPublicKey({
@@ -15,6 +19,58 @@ function generateEntitySecretCiphertext(entitySecret: string, publicKey: string)
   return encrypted.toString('base64')
 }
 
+async function getEntitySecretCiphertext(): Promise<string> {
+  const pkResp = await fetch(`${CIRCLE_API}/config/entity/publicKey`, {
+    headers: { Authorization: `Bearer ${process.env.CIRCLE_API_KEY}` },
+  })
+  const pkData = await pkResp.json()
+  return generateEntitySecretCiphertext(process.env.CIRCLE_ENTITY_SECRET!, pkData.data?.publicKey)
+}
+
+async function circleTransfer(walletId: string, destinationAddress: string, amount: string, ciphertext: string) {
+  const resp = await fetch(`${CIRCLE_API}/developer/transactions/transfer`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${process.env.CIRCLE_API_KEY}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      idempotencyKey: crypto.randomUUID(),
+      entitySecretCiphertext: ciphertext,
+      walletId,
+      destinationAddress,
+      tokenId: USDC_TOKEN_ID,
+      amounts: [String(amount)],
+      feeLevel: 'MEDIUM',
+    }),
+  })
+  const data = await resp.json()
+  if (!resp.ok) throw new Error(JSON.stringify(data))
+  return data.data
+}
+
+async function escrowDeposit(walletId: string, amount: string, claimKey: string, ciphertext: string) {
+  // Encode deposit(bytes32 claimKey, uint256 amount)
+  // selector: keccak256("deposit(bytes32,uint256)") = 0x47e7ef24
+  const selector = '47e7ef24'
+  const keyHex = claimKey.replace('0x', '').padStart(64, '0')
+  const amountWei = BigInt(Math.round(parseFloat(amount) * 1_000_000)).toString(16).padStart(64, '0')
+  const calldata = `0x${selector}${keyHex}${amountWei}`
+
+  const resp = await fetch(`${CIRCLE_API}/developer/transactions/contractExecution`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${process.env.CIRCLE_API_KEY}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      idempotencyKey: crypto.randomUUID(),
+      entitySecretCiphertext: ciphertext,
+      walletId,
+      contractAddress: ESCROW_ADDRESS,
+      callData: calldata,
+      feeLevel: 'MEDIUM',
+    }),
+  })
+  const data = await resp.json()
+  if (!resp.ok) throw new Error(JSON.stringify(data))
+  return data.data
+}
+
 export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' })
   const { senderEmail, recipientEmail, amount, note, walletId } = req.body
@@ -23,69 +79,59 @@ export default async function handler(req, res) {
 
   const db = createClient(process.env.VITE_SUPABASE_URL!, process.env.VITE_SUPABASE_ANON_KEY!)
 
-  // Get recipient wallet address
-  const { data: recipient } = await db.from('users').select('wallet_address, wallet_id').eq('email', recipientEmail).maybeSingle()
+  const { data: recipient } = await db
+    .from('users')
+    .select('wallet_address, wallet_id')
+    .eq('email', recipientEmail)
+    .maybeSingle()
 
-  // If no recipient wallet, create pending user
-  let recipientAddress = recipient?.wallet_address
-  if (!recipientAddress) {
-    // Store pending transaction — recipient claims when they sign up
-    const txId = crypto.randomUUID()
-    await db.from('transactions').insert({
-      id: txId,
-      sender_email: senderEmail,
-      recipient_email: recipientEmail,
-      amount: String(amount),
-      currency: 'USDC',
-      message: note || '',
-      status: 'PENDING_CLAIM',
-    })
-    // Send claim email
-    try {
-      const resend = new Resend(process.env.RESEND_API_KEY)
-      await resend.emails.send({
-        from: process.env.VITE_FROM_EMAIL || 'onboarding@resend.dev',
-        to: recipientEmail,
-        subject: `${senderEmail} sent you USDC on Avero`,
-        html: `<p>${senderEmail} sent you <strong>$${amount} USDC</strong> on Avero. <a href="https://useavero.xyz">Sign up to claim it</a>.</p>`,
-      })
-    } catch (_) {}
-    return res.status(200).json({ transactionId: txId, status: 'PENDING_CLAIM', message: 'Recipient not yet on Avero — funds held pending claim' })
-  }
-
-  // Execute Circle transfer via REST
   try {
-    const sendResp = await fetch('https://api.circle.com/v1/w3s/developer/transactions/transfer', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${process.env.CIRCLE_API_KEY}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        idempotencyKey: crypto.randomUUID(),
-        entitySecretCiphertext: await (async () => {
-          const pkResp = await fetch('https://api.circle.com/v1/w3s/config/entity/publicKey', {
-            headers: { 'Authorization': `Bearer ${process.env.CIRCLE_API_KEY}` },
-          })
-          const pkData = await pkResp.json()
-          return generateEntitySecretCiphertext(process.env.CIRCLE_ENTITY_SECRET!, pkData.data?.publicKey)
-        })(),
-        walletId,
-        destinationAddress: recipientAddress,
-        tokenId: '15dc2b5d-0994-58b0-bf8c-3a0501148ee8',
-        amounts: [String(amount)],
-        feeLevel: 'MEDIUM',
-      }),
-    })
-    const sendData = await sendResp.json()
-    if (!sendResp.ok) return res.status(500).json({ error: JSON.stringify(sendData) })
+    const ciphertext = await getEntitySecretCiphertext()
 
-    const tx = sendData.data
+    if (!recipient?.wallet_address) {
+      // NEW RECIPIENT — lock funds in escrow contract
+      const claimKey = '0x' + crypto.randomBytes(32).toString('hex')
+      const tx = await escrowDeposit(walletId, amount, claimKey, ciphertext)
+      const circleTransactionId = tx?.id || tx?.transaction?.id
+
+      const { data: saved } = await db.from('transactions').insert({
+        sender_email: senderEmail,
+        recipient_email: recipientEmail,
+        amount: String(amount),
+        currency: 'USDC',
+        message: note || '',
+        status: 'PENDING_CLAIM',
+        circle_transaction_id: circleTransactionId,
+        claim_key: claimKey,
+        block_explorer_url: circleTransactionId
+          ? `https://explorer.testnet.arc.io/tx/${circleTransactionId}`
+          : null,
+      }).select().maybeSingle()
+
+      try {
+        const resend = new Resend(process.env.RESEND_API_KEY)
+        await resend.emails.send({
+          from: 'Avero <noreply@useavero.xyz>',
+          to: recipientEmail,
+          subject: `${senderEmail} sent you $${amount} USDC on Avero`,
+          html: `<p><strong>${senderEmail}</strong> sent you <strong>$${amount} USDC</strong> on Avero.</p><p><a href="https://useavero.xyz">Sign up to claim it</a> — funds are held securely in an escrow smart contract.</p>${note ? `<p>Note: ${note}</p>` : ''}`,
+        })
+      } catch (_) {}
+
+      return res.status(200).json({
+        transactionId: saved?.id || circleTransactionId,
+        status: 'PENDING_CLAIM',
+        escrowAddress: ESCROW_ADDRESS,
+        message: 'Funds locked in escrow — recipient will receive an email to claim',
+      })
+    }
+
+    // EXISTING RECIPIENT — direct Circle transfer
+    const tx = await circleTransfer(walletId, recipient.wallet_address, amount, ciphertext)
     const circleTransactionId = tx?.id || tx?.transaction?.id
     const status = tx?.state || tx?.transaction?.state || 'INITIATED'
 
-    // Save to Supabase
-    const txRecord = {
+    const { data: saved } = await db.from('transactions').insert({
       sender_email: senderEmail,
       recipient_email: recipientEmail,
       amount: String(amount),
@@ -93,18 +139,18 @@ export default async function handler(req, res) {
       message: note || '',
       status,
       circle_transaction_id: circleTransactionId,
-      block_explorer_url: circleTransactionId ? `https://explorer.testnet.arc.io/tx/${circleTransactionId}` : null,
-    }
-    const { data: saved } = await db.from('transactions').insert(txRecord).select().maybeSingle()
+      block_explorer_url: circleTransactionId
+        ? `https://explorer.testnet.arc.io/tx/${circleTransactionId}`
+        : null,
+    }).select().maybeSingle()
 
-    // Send notification email
     try {
       const resend = new Resend(process.env.RESEND_API_KEY)
       await resend.emails.send({
-        from: process.env.VITE_FROM_EMAIL || 'onboarding@resend.dev',
+        from: 'Avero <noreply@useavero.xyz>',
         to: recipientEmail,
         subject: `You received $${amount} USDC from ${senderEmail}`,
-        html: `<p><strong>${senderEmail}</strong> sent you <strong>$${amount} USDC</strong> on Avero. <a href="https://useavero.xyz">View in your dashboard</a>.</p>${note ? `<p>Note: ${note}</p>` : ''}`,
+        html: `<p><strong>${senderEmail}</strong> sent you <strong>$${amount} USDC</strong> on Avero.</p><p><a href="https://useavero.xyz">View in your dashboard</a>.</p>${note ? `<p>Note: ${note}</p>` : ''}`,
       })
     } catch (_) {}
 

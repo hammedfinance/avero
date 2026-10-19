@@ -1,5 +1,6 @@
-import { useState, useEffect, FormEvent } from 'react'
-import { Plus, Copy, Check, Link2, ExternalLink, X } from 'lucide-react'
+import { useState, useEffect, FormEvent, useRef } from 'react'
+import { Plus, Copy, Check, Link2, ExternalLink, X, QrCode } from 'lucide-react'
+import QRCode from 'qrcode'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Card } from './ui/Card'
 import { Button } from './ui/Button'
@@ -21,6 +22,50 @@ type PaymentLink = {
   status: 'open' | 'closed'
   created_at: string
   url?: string
+}
+
+function QRModal({ url, onClose }: { url: string; onClose: () => void }) {
+  const canvasRef = useRef<HTMLCanvasElement>(null)
+  useEffect(() => {
+    if (canvasRef.current) {
+      void QRCode.toCanvas(canvasRef.current, url, { width: 240, margin: 2, color: { dark: '#000000', light: '#ffffff' } })
+    }
+  }, [url])
+
+  function download() {
+    if (!canvasRef.current) return
+    const a = document.createElement('a')
+    a.href = canvasRef.current.toDataURL('image/png')
+    a.download = 'avero-payment-qr.png'
+    a.click()
+  }
+
+  return (
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm"
+      onClick={(e) => e.target === e.currentTarget && onClose()}
+    >
+      <motion.div
+        initial={{ opacity: 0, scale: 0.95 }}
+        animate={{ opacity: 1, scale: 1 }}
+        exit={{ opacity: 0, scale: 0.95 }}
+        className="rounded-2xl border border-[#242424] bg-[#111111] p-6 flex flex-col items-center gap-4"
+      >
+        <div className="flex items-center justify-between w-full">
+          <p className="text-sm font-bold text-white">QR Code</p>
+          <button onClick={onClose} className="text-[#A3A3A3] hover:text-white transition-colors"><X size={16} /></button>
+        </div>
+        <div className="rounded-xl overflow-hidden bg-white p-2">
+          <canvas ref={canvasRef} />
+        </div>
+        <p className="text-xs text-[#A3A3A3] text-center break-all max-w-[240px]">{url}</p>
+        <Button size="sm" fullWidth onClick={download}>Download PNG</Button>
+      </motion.div>
+    </motion.div>
+  )
 }
 
 function CopyButton({ text }: { text: string }) {
@@ -51,6 +96,7 @@ export function PaymentLinksPage({ user }: PaymentLinksPageProps) {
   const [amount, setAmount] = useState('')
   const [formErrors, setFormErrors] = useState<{ title?: string; amount?: string }>({})
   const [configBoundary, setConfigBoundary] = useState<{ message: string; envVars: string[] } | null>(null)
+  const [qrUrl, setQrUrl] = useState<string | null>(null)
 
   const isDemo = user.id.startsWith('demo-')
 
@@ -100,7 +146,7 @@ export function PaymentLinksPage({ user }: PaymentLinksPageProps) {
           amount: parseFloat(amount),
           status: 'open',
           created_at: new Date().toISOString(),
-          url: result.url ?? `avero.app/pay/${result.slug}`,
+          url: result.url ?? `https://useavero.xyz/pay/${result.slug}`,
         },
         ...prev,
       ])
@@ -117,7 +163,7 @@ export function PaymentLinksPage({ user }: PaymentLinksPageProps) {
   }
 
   const linkUrl = (link: PaymentLink) =>
-    link.url ?? `avero.app/pay/${link.slug}`
+    link.url ?? `useavero.xyz/pay/${link.slug}`
 
   return (
     <div className="p-5 md:p-8 max-w-2xl">
@@ -149,6 +195,11 @@ export function PaymentLinksPage({ user }: PaymentLinksPageProps) {
           />
         </div>
       )}
+
+      {/* QR modal */}
+      <AnimatePresence>
+        {qrUrl && <QRModal url={qrUrl} onClose={() => setQrUrl(null)} />}
+      </AnimatePresence>
 
       {/* Create form modal */}
       <AnimatePresence>
@@ -258,7 +309,14 @@ export function PaymentLinksPage({ user }: PaymentLinksPageProps) {
 
               <div className="flex items-center gap-2 rounded-xl bg-[#0A0A0A] border border-[#1A1A1A] px-3 py-2">
                 <p className="flex-1 text-xs font-mono text-[#A3A3A3] truncate">{linkUrl(link)}</p>
-                <CopyButton text={linkUrl(link)} />
+                <CopyButton text={`https://${linkUrl(link)}`} />
+                <button
+                  onClick={() => setQrUrl(`https://${linkUrl(link)}`)}
+                  className="p-1.5 rounded-lg border border-[#242424] text-[#A3A3A3] hover:text-white hover:border-[#333] transition-colors"
+                  title="Show QR code"
+                >
+                  <QrCode size={13} />
+                </button>
                 <a
                   href={`https://${linkUrl(link)}`}
                   target="_blank"
