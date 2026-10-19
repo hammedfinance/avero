@@ -18,8 +18,12 @@ import { PayPage } from './components/PayPage'
 type AppView = 'landing' | 'auth' | 'dashboard'
 
 type UpsertResult = {
-  user: { wallet_id: string | null; wallet_address: string | null } | null
-  walletProvisioned: boolean
+  id: string
+  email: string
+  walletId: string | null
+  walletAddress: string | null
+  user?: { wallet_id: string | null; wallet_address: string | null } | null
+  walletProvisioned?: boolean
 }
 
 // ── Backend helper (typed, outside component to avoid hook re-creation) ────
@@ -70,8 +74,8 @@ export default function App() {
       // Upsert to Supabase + provision Circle wallet in the background (non-blocking)
       void upsertUserBackend(averUser.id, averUser.email, averUser.name)
         .then((result: UpsertResult) => {
-          const walletAddress: string | undefined = result.user?.wallet_address ?? undefined
-          const walletId: string | undefined = result.user?.wallet_id ?? undefined
+          const walletAddress: string | undefined = result.walletAddress ?? result.user?.wallet_address ?? undefined
+          const walletId: string | undefined = result.walletId ?? result.user?.wallet_id ?? undefined
           if (walletAddress !== undefined || walletId !== undefined) {
             const enriched: AverUser = { ...averUser, walletAddress, walletId }
             setSession(enriched)
