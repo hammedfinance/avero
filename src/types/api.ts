@@ -45,8 +45,9 @@ export interface TokenBalance {
 }
 
 export interface WalletBalanceResponse {
-  balances: TokenBalance[]
-  nativeBalance: string | null
+  balance: string
+  tokenBalances?: TokenBalance[]
+  nativeBalance?: string | null
   nativeSymbol: string
 }
 

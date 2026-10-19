@@ -68,7 +68,7 @@ export function WalletPage({ user }: WalletPageProps) {
     setBalanceLoading(true)
     try {
       const data = await walletApi.balance({ walletId: id, email: user.email })
-      const usdcBalance = data.balances?.[0]?.amount ?? data.nativeBalance ?? null
+      const usdcBalance = data.balance ?? data.tokenBalances?.[0]?.amount ?? null
       if (usdcBalance) setBalance(usdcBalance)
     } catch (err) {
       if (err instanceof ApiError && err.isConfigBoundary) {

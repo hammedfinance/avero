@@ -202,3 +202,28 @@
 {"level":"log","message":"error {\"isTrusted\":true}","timestamp":1792133923386}
 {"level":"log","message":"error {\"isTrusted\":true}","timestamp":1792133923386}
 {"level":"error","message":"[vite] failed to connect to websocket.\nyour current setup:\n  (browser) i5ctsm3hurjqnxpqypxmo.preview.studio.arc.io/ <--[HTTP]--> localhost:5173/ (server)\n  (browser) i5ctsm3hurjqnxpqypxmo.preview.studio.arc.io:/ <--[WebSocket (failing)]--> localhost:5173/ (server)\nCheck out your Vite / network configuration and https://vite.dev/config/server-options.html#server-hmr .","timestamp":1792134062174}
+{"level":"debug","message":"[vite] connected.","timestamp":1792387971597}
+{"level":"debug","message":"[vite] hot updated: /src/index.css","timestamp":1792388069603}
+{"level":"debug","message":"[vite] hot updated: /src/components/WalletPage.tsx","timestamp":1792388069603}
+{"level":"debug","message":"[vite] hot updated: /src/components/RequestMoneyPage.tsx","timestamp":1792388069603}
+{"level":"debug","message":"[vite] hot updated: /src/components/TransactionsPage.tsx","timestamp":1792388069603}
+{"level":"debug","message":"[vite] hot updated: /src/components/PaymentLinksPage.tsx","timestamp":1792388069604}
+{"level":"debug","message":"[vite] hot updated: /src/components/OverviewPage.tsx","timestamp":1792388069604}
+{"level":"debug","message":"[vite] hot updated: /src/components/SendMoneyPage.tsx","timestamp":1792388069604}
+{"level":"debug","message":"[vite] hot updated: /src/components/BulkSendPage.tsx","timestamp":1792388069604}
+{"level":"debug","message":"[vite] hot updated: /src/index.css","timestamp":1792388098322}
+{"level":"debug","message":"[vite] hot updated: /src/components/WalletPage.tsx","timestamp":1792388098322}
+{"level":"debug","message":"[vite] hot updated: /src/components/RequestMoneyPage.tsx","timestamp":1792388098322}
+{"level":"debug","message":"[vite] hot updated: /src/components/TransactionsPage.tsx","timestamp":1792388098323}
+{"level":"debug","message":"[vite] hot updated: /src/components/PaymentLinksPage.tsx","timestamp":1792388098323}
+{"level":"debug","message":"[vite] hot updated: /src/components/OverviewPage.tsx","timestamp":1792388098323}
+{"level":"debug","message":"[vite] hot updated: /src/components/SendMoneyPage.tsx","timestamp":1792388098323}
+{"level":"debug","message":"[vite] hot updated: /src/components/BulkSendPage.tsx","timestamp":1792388098323}
+{"level":"debug","message":"[vite] hot updated: /src/components/OverviewPage.tsx","timestamp":1792388141073}
+{"level":"debug","message":"[vite] hot updated: /src/index.css","timestamp":1792388141073}
+{"level":"debug","message":"[vite] hot updated: /src/components/TransactionsPage.tsx","timestamp":1792388192570}
+{"level":"debug","message":"[vite] hot updated: /src/index.css","timestamp":1792388192570}
+{"level":"debug","message":"[vite] connected.","timestamp":1792388264637}
+{"level":"debug","message":"[vite] connected.","timestamp":1792388322143}
+{"level":"debug","message":"[vite] connected.","timestamp":1792388326483}
+{"level":"log","message":"[vite] server connection lost. Polling for restart...","timestamp":1792388338949}

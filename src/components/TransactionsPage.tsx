@@ -64,7 +64,7 @@ export function TransactionsPage({ user }: TransactionsPageProps) {
   async function loadTxns() {
     setLoading(true)
     try {
-      const data = await transactionsApi.list(user.id)
+      const data = await transactionsApi.list(user.id, user.email)
       setTxns(data.transactions)
     } catch (err) {
       if (err instanceof ApiError && err.isConfigBoundary) {

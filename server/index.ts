@@ -155,25 +155,18 @@ app.post('/wallet/create', async (req, res) => {
 
 // ── Wallet: balance ───────────────────────────────────────────
 
-app.post('/wallet/balance', async (req, res) => {
-  let { walletId, email } = req.body as { walletId?: string; address?: string; email?: string }
-
-  // If no walletId, try resolving from email
+async function handleBalance(walletId: string | undefined, email: string | undefined, res: import('express').Response) {
   if (!walletId && email && isSupabaseConfigured()) {
     const user = await getUserByEmail(email)
     if (user?.wallet_id) walletId = user.wallet_id
   }
-
   if (!walletId) return res.status(400).json({ error: 'walletId is required.' })
-
-  if (!isCircleConfigured()) {
-    return missingEnv(res, 'Circle', ['CIRCLE_API_KEY', 'CIRCLE_ENTITY_SECRET'])
-  }
-
+  if (!isCircleConfigured()) return missingEnv(res, 'Circle', ['CIRCLE_API_KEY', 'CIRCLE_ENTITY_SECRET'])
   try {
     const { usdcBalance, nativeBalance } = await getWalletBalance(walletId)
     return res.json({
-      balances: [{ amount: usdcBalance, token: { symbol: 'USDC' } }],
+      balance: usdcBalance,
+      tokenBalances: [{ amount: usdcBalance, token: { symbol: 'USDC' } }],
       nativeBalance,
       nativeSymbol: 'USDC',
     })
@@ -181,6 +174,16 @@ app.post('/wallet/balance', async (req, res) => {
     console.error('[/wallet/balance] error:', err)
     return res.status(500).json({ error: 'Failed to fetch balance.' })
   }
+}
+
+app.post('/wallet/balance', async (req, res) => {
+  const { walletId, email } = req.body as { walletId?: string; email?: string }
+  return handleBalance(walletId, email, res)
+})
+
+app.get('/wallet/balance', async (req, res) => {
+  const { walletId, email } = req.query as { walletId?: string; email?: string }
+  return handleBalance(walletId, email, res)
 })
 
 // ── Payments: send ────────────────────────────────────────────

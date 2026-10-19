@@ -66,7 +66,10 @@ export const walletApi = {
   create: (userId: string, email: string) =>
     request<WalletCreateResponse>('POST', '/wallet/create', { userId, email }),
   balance: (payload: WalletBalancePayload) =>
-    request<WalletBalanceResponse>('POST', '/wallet/balance', payload),
+    request<WalletBalanceResponse>('GET', '/wallet/balance', undefined, {
+      ...(payload.walletId ? { walletId: payload.walletId } : {}),
+      ...(payload.email ? { email: payload.email } : {}),
+    }),
   send: (payload: SendPayload) =>
     request<SendResponse>('POST', '/wallet/send', payload),
 }
@@ -87,8 +90,11 @@ export const paymentLinksApi = {
 
 // ── Transactions ──
 export const transactionsApi = {
-  list: (userId: string) =>
-    request<TransactionsListResponse>('GET', '/transactions/list', undefined, { userId }),
+  list: (userId: string, email?: string) =>
+    request<TransactionsListResponse>('GET', '/transactions/list', undefined, {
+      userId,
+      ...(email ? { email } : {}),
+    }),
 }
 
 // ── Payment Requests ──

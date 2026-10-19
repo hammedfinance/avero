@@ -58,7 +58,7 @@ export function OverviewPage({ user, onNavigate }: OverviewPageProps) {
     setBalanceLoading(true)
     walletApi.balance({ walletId: user.walletId, email: user.email })
       .then((data) => {
-        const usdcBalance = data.balances?.[0]?.amount ?? data.nativeBalance ?? null
+        const usdcBalance = data.balance ?? data.tokenBalances?.[0]?.amount ?? null
         if (usdcBalance) setBalance(usdcBalance)
       })
       .catch(() => { /* non-fatal */ })
@@ -70,7 +70,7 @@ export function OverviewPage({ user, onNavigate }: OverviewPageProps) {
   useEffect(() => {
     if (isDemo || !user.id) return
     transactionsApi
-      .list(user.id)
+      .list(user.id, user.email)
       .then((data) => {
         type RawTx = {
           id: string
