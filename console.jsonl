@@ -366,3 +366,6 @@
 {"level":"debug","message":"[vite] connected.","timestamp":1792580579258}
 {"level":"debug","message":"[vite] connected.","timestamp":1792580625537}
 {"level":"log","message":"[vite] server connection lost. Polling for restart...","timestamp":1792580685895}
+{"level":"log","message":"[vite] server connection lost. Polling for restart...","timestamp":1792580714935}
+{"level":"log","message":"[vite] server connection lost. Polling for restart...","timestamp":1792582096618}
+{"level":"log","message":"[vite] server connection lost. Polling for restart...","timestamp":1792582359807}

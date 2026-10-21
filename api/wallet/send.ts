@@ -85,6 +85,32 @@ async function pollCircleTx(txId: string, maxWait = 45000): Promise<string> {
 
 
 
+async function runEscrow(walletId: string, depositorAddress: string, claimKey: string, amount: string, txDbId: string, db: ReturnType<typeof createClient>) {
+  try {
+    const ESCROW = process.env.VITE_ESCROW_ADDRESS!
+    const amountWei = BigInt(Math.round(parseFloat(amount) * 1_000_000)).toString(16).padStart(64, '0')
+    const spenderPadded = ESCROW.replace('0x', '').toLowerCase().padStart(64, '0')
+    // approve(address,uint256) = 0x095ea7b3
+    const approveTx = await contractCall(walletId, USDC_CONTRACT, `0x095ea7b3${spenderPadded}${amountWei}`)
+    const approveTxId = approveTx?.id || approveTx?.transaction?.id
+    console.log('[escrow] approve tx:', approveTxId)
+    await pollCircleTx(approveTxId)
+    console.log('[escrow] approve confirmed')
+    // depositFor(address,bytes32,uint256) = 0xcd5bff7e
+    const depositorPadded = depositorAddress.replace('0x', '').toLowerCase().padStart(64, '0')
+    const keyHex = claimKey.replace('0x', '').padStart(64, '0')
+    const depositTx = await contractCall(walletId, ESCROW, `0xcd5bff7e${depositorPadded}${keyHex}${amountWei}`)
+    const depositTxId = depositTx?.id || depositTx?.transaction?.id
+    console.log('[escrow] deposit tx:', depositTxId)
+    await pollCircleTx(depositTxId)
+    console.log('[escrow] deposit confirmed')
+    await db.from('transactions').update({ status: 'ESCROW_LOCKED', circle_transaction_id: depositTxId }).eq('id', txDbId)
+  } catch (e) {
+    console.error('[escrow runEscrow error]', e)
+    await db.from('transactions').update({ status: 'ESCROW_FAILED' }).eq('id', txDbId)
+  }
+}
+
 export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' })
   const { senderEmail, recipientEmail, amount, note, walletId, walletAddress } = req.body
@@ -116,13 +142,12 @@ export default async function handler(req, res) {
         claim_key: claimKey,
       }).select().maybeSingle()
 
-      // Fire escrow worker in background — do NOT await
-      const workerUrl = `${req.headers['x-forwarded-proto'] || 'https'}://${req.headers.host}/api/wallet/escrow-worker`
-      fetch(workerUrl, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ walletId, walletAddress: senderAddress, claimKey, amount, transactionDbId: saved?.id }),
-      }).catch(e => console.error('[escrow-worker fire]', e))
+      // Run escrow in background using waitUntil — does not block the response
+      if (res.locals?.waitUntil) {
+        res.locals.waitUntil(runEscrow(walletId, senderAddress, claimKey, amount, saved?.id, db))
+      } else {
+        runEscrow(walletId, senderAddress, claimKey, amount, saved?.id, db).catch(e => console.error('[escrow bg]', e))
+      }
 
       try {
         const resend = new Resend(process.env.RESEND_API_KEY)
