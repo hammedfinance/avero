@@ -188,14 +188,88 @@ app.get('/wallet/balance', async (req, res) => {
 
 // ── Payments: send ────────────────────────────────────────────
 
+// ── Escrow helpers ────────────────────────────────────────────
+
+const CIRCLE_API = 'https://api.circle.com/v1/w3s'
+const USDC_CONTRACT = '0x3600000000000000000000000000000000000000'
+
+async function getEntitySecretCiphertext(): Promise<string> {
+  const { generateEntitySecretCiphertext } = await import('@circle-fin/developer-controlled-wallets')
+  return generateEntitySecretCiphertext(process.env.CIRCLE_ENTITY_SECRET!)
+}
+
+async function contractCall(walletId: string, contractAddress: string, callData: string) {
+  const ciphertext = await getEntitySecretCiphertext()
+  const resp = await fetch(`${CIRCLE_API}/developer/transactions/contractExecution`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${process.env.CIRCLE_API_KEY}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      idempotencyKey: crypto.randomUUID(),
+      entitySecretCiphertext: ciphertext,
+      walletId,
+      contractAddress,
+      callData,
+      feeLevel: 'MEDIUM',
+    }),
+  })
+  const data = await resp.json() as { data?: { id?: string; transaction?: { id?: string } } }
+  if (!resp.ok) throw new Error(JSON.stringify(data))
+  return data.data
+}
+
+async function pollCircleTx(txId: string, maxWait = 90000): Promise<string> {
+  if (!txId) return 'UNKNOWN'
+  const start = Date.now()
+  while (Date.now() - start < maxWait) {
+    await new Promise(r => setTimeout(r, 3000))
+    const resp = await fetch(`${CIRCLE_API}/transactions/${txId}`, {
+      headers: { Authorization: `Bearer ${process.env.CIRCLE_API_KEY}` },
+    })
+    const d = await resp.json() as { data?: { transaction?: { state?: string; errorReason?: string }; state?: string } }
+    const state = d?.data?.transaction?.state || d?.data?.state
+    if (state === 'COMPLETE' || state === 'CONFIRMED') return state
+    if (state === 'FAILED' || state === 'CANCELLED') throw new Error(`Transaction ${state}: ${d?.data?.transaction?.errorReason}`)
+  }
+  return 'TIMEOUT'
+}
+
+async function runEscrow(walletId: string, depositorAddress: string, claimKey: string, amount: string, txDbId: string) {
+  const supabase = getSupabase()
+  try {
+    const ESCROW = process.env.VITE_ESCROW_ADDRESS!
+    const amountWei = BigInt(Math.round(parseFloat(amount) * 1_000_000)).toString(16).padStart(64, '0')
+    const spenderPadded = ESCROW.replace('0x', '').toLowerCase().padStart(64, '0')
+    // approve(address,uint256) = 0x095ea7b3
+    const approveTx = await contractCall(walletId, USDC_CONTRACT, `0x095ea7b3${spenderPadded}${amountWei}`)
+    const approveTxId = (approveTx as { id?: string })?.id
+    console.log('[escrow] approve tx:', approveTxId)
+    await pollCircleTx(approveTxId!)
+    console.log('[escrow] approve confirmed')
+    // depositFor(address,bytes32,uint256) = 0xcd5bff7e
+    const depositorPadded = depositorAddress.replace('0x', '').toLowerCase().padStart(64, '0')
+    const keyHex = claimKey.replace('0x', '').padStart(64, '0')
+    const depositTx = await contractCall(walletId, ESCROW, `0xcd5bff7e${depositorPadded}${keyHex}${amountWei}`)
+    const depositTxId = (depositTx as { id?: string })?.id
+    console.log('[escrow] deposit tx:', depositTxId)
+    await pollCircleTx(depositTxId!)
+    console.log('[escrow] deposit confirmed — ESCROW LOCKED')
+    await supabase.from('transactions').update({ status: 'ESCROW_LOCKED', circle_transaction_id: depositTxId }).eq('id', txDbId)
+  } catch (e) {
+    console.error('[escrow runEscrow error]', e)
+    await supabase.from('transactions').update({ status: 'ESCROW_FAILED' }).eq('id', txDbId)
+  }
+}
+
 app.post('/wallet/send', async (req, res) => {
   const body = req.body as {
     senderEmail?: string
     recipientEmail?: string
     amount?: string | number
-    message?: string
+    note?: string
+    walletId?: string
+    walletAddress?: string
   }
-  const { senderEmail, recipientEmail, amount, message } = body
+  const { senderEmail, recipientEmail, amount, note, walletId: bodyWalletId, walletAddress } = body
 
   if (!senderEmail || !recipientEmail || !amount) {
     return res.status(400).json({ error: 'senderEmail, recipientEmail, and amount are required.' })
@@ -206,56 +280,65 @@ app.post('/wallet/send', async (req, res) => {
 
   const amountStr = String(amount)
 
-  // Both Supabase AND Circle required for real sends
-  if (!isSupabaseConfigured()) {
-    return missingEnv(res, 'Supabase', ['VITE_SUPABASE_URL', 'VITE_SUPABASE_ANON_KEY'])
-  }
-  if (!isCircleConfigured()) {
-    return missingEnv(res, 'Circle', ['CIRCLE_API_KEY', 'CIRCLE_ENTITY_SECRET', 'CIRCLE_WALLET_SET_ID'])
-  }
+  if (!isSupabaseConfigured()) return missingEnv(res, 'Supabase', ['VITE_SUPABASE_URL', 'VITE_SUPABASE_ANON_KEY'])
+  if (!isCircleConfigured()) return missingEnv(res, 'Circle', ['CIRCLE_API_KEY', 'CIRCLE_ENTITY_SECRET', 'CIRCLE_WALLET_SET_ID'])
 
   try {
-    // 1. Resolve sender wallet
     const sender = await getUserByEmail(senderEmail)
-    if (!sender?.wallet_id) {
-      return res.status(400).json({ error: 'Sender does not have a provisioned wallet. Please visit the Wallet page first.' })
-    }
+    if (!sender?.wallet_id) return res.status(400).json({ error: 'Sender does not have a provisioned wallet.' })
 
-    // 2. Resolve or prepare recipient
-    let recipientAddress: string
-    let recipient = await getUserByEmail(recipientEmail)
+    const recipient = await getUserByEmail(recipientEmail)
 
-    if (recipient?.wallet_address) {
-      recipientAddress = recipient.wallet_address
-    } else {
-      // Recipient not yet on Avero — provision a waiting wallet
-      // Use a deterministic uuid-shaped ID derived from the email
-      const { walletId, address } = await createUserWallet(`pending-${recipientEmail}`)
-      recipientAddress = address
-      // Generate a valid UUID for the pending user via Supabase
+    // NEW RECIPIENT — use escrow contract
+    if (!recipient?.wallet_address && process.env.VITE_ESCROW_ADDRESS) {
+      const claimKey = '0x' + Array.from(crypto.getRandomValues(new Uint8Array(32))).map(b => b.toString(16).padStart(2, '0')).join('')
       const supabase = getSupabase()
-      const { data: uuidRow } = await supabase.rpc('gen_random_uuid').single()
-      const pendingId: string = (uuidRow as string | null) ?? crypto.randomUUID()
-      await upsertUser({
-        id: pendingId,
-        email: recipientEmail,
-        walletId,
-        walletAddress: address,
+      const { data: saved } = await supabase.from('transactions').insert({
+        sender_email: senderEmail,
+        recipient_email: recipientEmail,
+        amount: amountStr,
+        currency: 'USDC',
+        message: note || '',
+        status: 'PENDING_CLAIM',
+        claim_key: claimKey,
+      }).select().maybeSingle()
+
+      // Run escrow async — Railway has no timeout
+      const senderWalletId = bodyWalletId || sender.wallet_id
+      const senderAddress = walletAddress || sender.wallet_address || ''
+      runEscrow(senderWalletId, senderAddress, claimKey, amountStr, saved?.id).catch(e => console.error('[escrow bg]', e))
+
+      // Send claim email
+      if (isEmailConfigured()) {
+        sendPaymentNotification({
+          recipientEmail,
+          senderEmail,
+          amount: amountStr,
+          message: note ?? undefined,
+          txId: saved?.id || '',
+          explorerUrl: `https://useavero.xyz/pay/claim?key=${encodeURIComponent(claimKey)}`,
+        }).catch((e: unknown) => console.error('[escrow email]', e))
+      }
+
+      return res.json({
+        transactionId: saved?.id,
+        status: 'PENDING_CLAIM',
+        escrowAddress: process.env.VITE_ESCROW_ADDRESS,
+        message: 'Funds being locked in escrow — recipient will receive an email to claim',
       })
-      recipient = await getUserByEmail(recipientEmail)
     }
 
-    // 3. Create pending transaction record
+    // EXISTING RECIPIENT — direct Circle transfer
+    const recipientAddress = recipient?.wallet_address || ''
     const tx = await createTransaction({
       senderEmail,
       senderId: sender.id,
       recipientEmail,
       amount: amountStr,
-      message: message ?? undefined,
+      message: note ?? undefined,
       status: 'INITIATED',
     })
 
-    // 4. Execute Circle transfer
     const { circleTransactionId, status } = await sendUsdc({
       senderWalletId: sender.wallet_id,
       recipientAddress,
@@ -263,41 +346,16 @@ app.post('/wallet/send', async (req, res) => {
       idempotencyKey: tx.id,
     })
 
-    // 5. Update transaction record with Circle ID
     await updateTransaction(tx.id, { circleTransactionId, status })
 
-    // 6. Fire email notifications (non-blocking)
     if (isEmailConfigured()) {
-      // Notify recipient
-      sendPaymentNotification({
-        recipientEmail,
-        senderEmail,
-        amount: amountStr,
-        message: message ?? undefined,
-        txId: tx.id,
-        explorerUrl: null,
-      }).catch((err: unknown) => {
-        console.error('[/wallet/send] recipient email failed:', err)
-      })
-      // Send receipt to sender
-      sendPaymentReceipt({
-        senderEmail,
-        recipientEmail,
-        amount: amountStr,
-        message: message ?? undefined,
-        txId: tx.id,
-        explorerUrl: null,
-      }).catch((err: unknown) => {
-        console.error('[/wallet/send] sender receipt failed:', err)
-      })
+      sendPaymentNotification({ recipientEmail, senderEmail, amount: amountStr, message: note ?? undefined, txId: tx.id, explorerUrl: null })
+        .catch((e: unknown) => console.error('[email]', e))
+      sendPaymentReceipt({ senderEmail, recipientEmail, amount: amountStr, message: note ?? undefined, txId: tx.id, explorerUrl: null })
+        .catch((e: unknown) => console.error('[email]', e))
     }
 
-    return res.json({
-      success: true,
-      transactionId: tx.id,
-      circleTransactionId,
-      status,
-    })
+    return res.json({ success: true, transactionId: tx.id, circleTransactionId, status })
   } catch (err) {
     console.error('[/wallet/send] error:', err)
     return res.status(500).json({ error: err instanceof Error ? err.message : 'Payment failed.' })
