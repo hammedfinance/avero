@@ -46,7 +46,39 @@ async function circleTransfer(walletId: string, destinationAddress: string, amou
   return data.data
 }
 
+const USDC_CONTRACT = '0x3600000000000000000000000000000000000000'
+
+async function approveUsdc(walletId: string, amount: string, ciphertext: string) {
+  // Encode approve(address spender, uint256 amount)
+  // selector: keccak256("approve(address,uint256)") = 0x095ea7b3
+  const selector = '095ea7b3'
+  const spender = ESCROW_ADDRESS.replace('0x', '').padStart(64, '0')
+  const amountWei = BigInt(Math.round(parseFloat(amount) * 1_000_000)).toString(16).padStart(64, '0')
+  const calldata = `0x${selector}${spender}${amountWei}`
+
+  const resp = await fetch(`${CIRCLE_API}/developer/transactions/contractExecution`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${process.env.CIRCLE_API_KEY}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      idempotencyKey: crypto.randomUUID(),
+      entitySecretCiphertext: ciphertext,
+      walletId,
+      contractAddress: USDC_CONTRACT,
+      callData: calldata,
+      feeLevel: 'MEDIUM',
+    }),
+  })
+  const data = await resp.json()
+  if (!resp.ok) throw new Error(`Approve failed: ${JSON.stringify(data)}`)
+  // Wait briefly for approval to land
+  await new Promise(r => setTimeout(r, 3000))
+  return data.data
+}
+
 async function escrowDeposit(walletId: string, amount: string, claimKey: string, ciphertext: string) {
+  // First approve USDC spending
+  await approveUsdc(walletId, amount, ciphertext)
+
   // Encode deposit(bytes32 claimKey, uint256 amount)
   // selector: keccak256("deposit(bytes32,uint256)") = 0x47e7ef24
   const selector = '47e7ef24'
@@ -67,7 +99,7 @@ async function escrowDeposit(walletId: string, amount: string, claimKey: string,
     }),
   })
   const data = await resp.json()
-  if (!resp.ok) throw new Error(JSON.stringify(data))
+  if (!resp.ok) throw new Error(`Deposit failed: ${JSON.stringify(data)}`)
   return data.data
 }
 
@@ -110,13 +142,14 @@ export default async function handler(req, res) {
 
       try {
         const resend = new Resend(process.env.RESEND_API_KEY)
-        await resend.emails.send({
+        const emailResult = await resend.emails.send({
           from: 'Avero <noreply@useavero.xyz>',
           to: recipientEmail,
           subject: `${senderEmail} sent you $${amount} USDC on Avero`,
-          html: `<p><strong>${senderEmail}</strong> sent you <strong>$${amount} USDC</strong> on Avero.</p><p><a href="https://useavero.xyz">Sign up to claim it</a> — funds are held securely in an escrow smart contract.</p>${note ? `<p>Note: ${note}</p>` : ''}`,
+          html: `<p><strong>${senderEmail}</strong> sent you <strong>$${amount} USDC</strong> on Avero.</p><p><a href="https://useavero.xyz/pay/claim?key=${encodeURIComponent(claimKey)}">Click here to claim your USDC</a> — funds are held securely in an escrow smart contract.</p>${note ? `<p>Note: ${note}</p>` : ''}`,
         })
-      } catch (_) {}
+        console.log('[Resend escrow email]', JSON.stringify(emailResult))
+      } catch (emailErr) { console.error('[Resend escrow error]', emailErr) }
 
       return res.status(200).json({
         transactionId: saved?.id || circleTransactionId,
@@ -146,13 +179,14 @@ export default async function handler(req, res) {
 
     try {
       const resend = new Resend(process.env.RESEND_API_KEY)
-      await resend.emails.send({
+      const emailResult = await resend.emails.send({
         from: 'Avero <noreply@useavero.xyz>',
         to: recipientEmail,
         subject: `You received $${amount} USDC from ${senderEmail}`,
         html: `<p><strong>${senderEmail}</strong> sent you <strong>$${amount} USDC</strong> on Avero.</p><p><a href="https://useavero.xyz">View in your dashboard</a>.</p>${note ? `<p>Note: ${note}</p>` : ''}`,
       })
-    } catch (_) {}
+      console.log('[Resend direct email]', JSON.stringify(emailResult))
+    } catch (emailErr) { console.error('[Resend direct error]', emailErr) }
 
     return res.status(200).json({ transactionId: circleTransactionId || saved?.id, status })
   } catch (e) {

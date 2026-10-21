@@ -2,15 +2,15 @@
 pragma solidity ^0.8.19;
 
 import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
-import {Ownable2Step} from "@openzeppelin/contracts/access/Ownable2Step.sol";
-import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import {ECDSA} from "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
+import {MessageHashUtils} from "@openzeppelin/contracts/utils/cryptography/MessageHashUtils.sol";
 
 /// @title AveiroEscrow
 /// @notice Escrows USDC deposits keyed by off-chain claim keys and supports claim, owner release, and sender cancellation after expiry.
 /// @dev USDC is a centralized stablecoin; its issuer may freeze this contract address, which can trap funds for active deposits.
-contract AveiroEscrow is Ownable2Step, ReentrancyGuard {
+contract AveiroEscrow is ReentrancyGuard {
     using SafeERC20 for IERC20;
 
     /// @notice Escrow deposit record.
@@ -37,7 +37,7 @@ contract AveiroEscrow is Ownable2Step, ReentrancyGuard {
     error NotExpired();
     error ZeroAddress();
     error ExpiryPassed();
-    error RenounceNotAllowed();
+    error Unauthorized();
 
     event Deposited(
         uint256 indexed depositId,
@@ -64,14 +64,16 @@ contract AveiroEscrow is Ownable2Step, ReentrancyGuard {
 
     uint256 public nextDepositId;
     address public immutable USDC;
+    address public immutable SIGNER;
     uint64 public constant EXPIRY_SECONDS = 7 days;
 
     /// @notice Initializes the escrow with the USDC token address and sets deployer as owner.
     /// @param usdc ERC-20 USDC token address.
-    constructor(address usdc) Ownable(msg.sender) {
+    constructor(address usdc, address signer) {
         if (usdc == address(0)) revert ZeroAddress();
 
         USDC = usdc;
+        SIGNER = signer;
         nextDepositId = 1;
     }
 
@@ -129,11 +131,15 @@ contract AveiroEscrow is Ownable2Step, ReentrancyGuard {
     /// @notice Releases an active deposit to a recipient, callable only by owner.
     /// @param depositId Identifier of the deposit to release.
     /// @param recipient Wallet that receives escrowed USDC.
-    function releaseTo(uint256 depositId, address recipient)
+    function releaseTo(uint256 depositId, address recipient, bytes calldata signature)
         external
-        onlyOwner
         nonReentrant
     {
+        bytes32 hash = keccak256(abi.encodePacked(depositId, recipient, block.chainid));
+        bytes32 ethHash = MessageHashUtils.toEthSignedMessageHash(hash);
+        address recovered = ECDSA.recover(ethHash, signature);
+        if (recovered != SIGNER) revert Unauthorized();
+
         if (recipient == address(0)) revert ZeroAddress();
 
         Deposit storage dep = deposits[depositId];
@@ -160,9 +166,5 @@ contract AveiroEscrow is Ownable2Step, ReentrancyGuard {
     /// @return Deposit id currently associated with the key, or 0 if none.
     function depositIdForKey(bytes32 claimKey) external view returns (uint256) {
         return keyToId[claimKey];
-    }
-
-    function renounceOwnership() public override onlyOwner {
-        revert RenounceNotAllowed();
     }
 }

@@ -163,7 +163,7 @@ export function PaymentLinksPage({ user }: PaymentLinksPageProps) {
   }
 
   const linkUrl = (link: PaymentLink) =>
-    link.url ?? `useavero.xyz/pay/${link.slug}`
+    link.url ?? `https://useavero.xyz/pay/${link.slug}`
 
   return (
     <div className="p-5 md:p-8 max-w-2xl">

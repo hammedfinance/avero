@@ -26,13 +26,13 @@ Send USDC to any email address. Recipients without a wallet get funds held in th
 
 | Contract | Network | Address | Explorer |
 |---|---|---|---|
-| AveiroEscrow | Arc Testnet | `0x735b5ec34cae95dd64c7e808ff2548ec6514ce6a` | https://explorer.testnet.arc.io/address/0x735b5ec34cae95dd64c7e808ff2548ec6514ce6a |
+| AveiroEscrow | Arc Testnet | `0xfcb76ea576f5fa395f0c4e54ce39dafa6d7031db` | https://explorer.testnet.arc.io/address/0xfcb76ea576f5fa395f0c4e54ce39dafa6d7031db |
 
 ### AveiroEscrow
-- Deploy tx: `0x4e5e1d5f18a2fd809a47810e6dac8cd19fee7e8bfc572a15db9f6506e465c9e1`
-- Owner: `0x5B12Ce46C7194aD57d143bC22847224047b1Ef42` (platform deployer wallet)
+- Deploy tx: `0xb9381013b9e64507644ab9a93d08eb015e84172eb7f7a4ed669f0b0ea246dc85`
+- Signer: `0x497A18873CcFB95Ba43B83d6059833b091787376` (backend signer key)
 - USDC: `0x3600000000000000000000000000000000000000`
-- Purpose: Holds USDC when sending to an email with no Avero wallet. Owner calls `releaseTo()` when recipient signs up. Sender can `cancel()` after 7 days.
+- Purpose: Holds USDC when sending to an email with no Avero wallet. Backend signs releaseTo() calls with ESCROW_SIGNER_PRIVATE_KEY. Sender can cancel() after 7 days.
 
 ## Key Files
 

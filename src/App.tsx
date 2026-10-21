@@ -12,6 +12,7 @@ import { TransactionsPage } from './components/TransactionsPage'
 import { WalletPage } from './components/WalletPage'
 import { AverUser, buildAverUser, setSession, clearSession, getSession } from './lib/auth'
 import { PayPage } from './components/PayPage'
+import { ClaimPage } from './components/ClaimPage'
 
 // ── Types ──────────────────────────────────────────────────────────────────
 
@@ -114,6 +115,12 @@ export default function App() {
     setUser(null)
     setView('landing')
     setDashView('overview')
+  }
+
+  // Handle /pay/claim?key=xxx routes
+  if (window.location.pathname === '/pay/claim') {
+    const claimKey = new URLSearchParams(window.location.search).get('key') || ''
+    return <ClaimPage claimKey={claimKey} />
   }
 
   // Handle /pay/:slug routes — after all hooks

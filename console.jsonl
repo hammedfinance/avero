@@ -262,3 +262,75 @@
 {"level":"log","message":"[vite] server connection lost. Polling for restart...","timestamp":1792426725165}
 {"level":"log","message":"[vite] server connection lost. Polling for restart...","timestamp":1792426822489}
 {"level":"error","message":"[2026-10-19T16:24:47.710Z] ERROR: [fetchProjectSettings] Failed to fetch project settings, falling back to cached settings TypeError: Load failed","timestamp":1792427087711}
+{"level":"log","message":"restart sse, about to listen","timestamp":1792475608547}
+{"level":"log","message":"listen https://wallet.binance.com/tonbridge/bridge/events?client_id=ce639ab5483fca62a6bebf2df5ff3e5854368a938d1a8cd810ed94b7117b485d&user_info=","timestamp":1792475608549}
+{"level":"log","message":"restart sse, about to listen","timestamp":1792475609476}
+{"level":"log","message":"listen https://wallet.binance.com/tonbridge/bridge/events?client_id=ce639ab5483fca62a6bebf2df5ff3e5854368a938d1a8cd810ed94b7117b485d&user_info=","timestamp":1792475609476}
+{"level":"log","message":"error {\"isTrusted\":true}","timestamp":1792475609499}
+{"level":"log","message":"An error occurred: {\"isTrusted\":true}","timestamp":1792475609499}
+{"level":"log","message":"error {\"isTrusted\":true}","timestamp":1792475637832}
+{"level":"log","message":"[vite] server connection lost. Polling for restart...","timestamp":1792476266039}
+{"level":"debug","message":"[vite] connected.","timestamp":1792476464949}
+{"level":"log","message":"[vite] server connection lost. Polling for restart...","timestamp":1792476479068}
+{"level":"debug","message":"[vite] connected.","timestamp":1792476757212}
+{"level":"log","message":"[vite] server connection lost. Polling for restart...","timestamp":1792476801130}
+{"level":"debug","message":"[vite] connected.","timestamp":1792476805020}
+{"level":"log","message":"[vite] server connection lost. Polling for restart...","timestamp":1792476828415}
+{"level":"log","message":"[vite] server connection lost. Polling for restart...","timestamp":1792476841089}
+{"level":"debug","message":"[vite] connected.","timestamp":1792477099344}
+{"level":"debug","message":"[vite] connected.","timestamp":1792477530432}
+{"level":"log","message":"[vite] server connection lost. Polling for restart...","timestamp":1792477546609}
+{"level":"debug","message":"[vite] hot updated: /src/App.tsx","timestamp":1792477781529}
+{"level":"debug","message":"[vite] hot updated: /src/index.css","timestamp":1792477781529}
+{"level":"error","message":"[vite] Failed to reload /src/App.tsx. This could be due to syntax errors or importing non-existent modules. (see errors above)","timestamp":1792477816115}
+{"level":"error","message":"[vite] Failed to reload /src/index.css. This could be due to syntax errors or importing non-existent modules. (see errors above)","timestamp":1792477851365}
+{"level":"debug","message":"[vite] hot updated: /src/App.tsx","timestamp":1792477851366}
+{"level":"debug","message":"[vite] hot updated: /src/index.css","timestamp":1792477851366}
+{"level":"log","message":"[vite] server connection lost. Polling for restart...","timestamp":1792477851366}
+{"level":"error","message":"[vite] Failed to reload /src/App.tsx. This could be due to syntax errors or importing non-existent modules. (see errors above)","timestamp":1792478291827}
+{"level":"debug","message":"[vite] hot updated: /src/App.tsx","timestamp":1792478297726}
+{"level":"debug","message":"[vite] hot updated: /src/index.css","timestamp":1792478297726}
+{"level":"debug","message":"[vite] hot updated: /src/components/ClaimPage.tsx","timestamp":1792478316929}
+{"level":"debug","message":"[vite] hot updated: /src/index.css","timestamp":1792478316929}
+{"level":"error","message":"[vite] SyntaxError: The requested module '/src/components/ClaimPage.tsx?t=1792478320111' does not provide an export named 'ClaimPage'","timestamp":1792478322526,"stack":"SyntaxError: The requested module '/src/components/ClaimPage.tsx?t=1792478320111' does not provide an export named 'ClaimPage'"}
+{"level":"error","message":"[vite] Failed to reload /src/App.tsx. This could be due to syntax errors or importing non-existent modules. (see errors above)","timestamp":1792478322527}
+{"level":"debug","message":"[vite] hot updated: /src/App.tsx","timestamp":1792478329198}
+{"level":"debug","message":"[vite] hot updated: /src/index.css","timestamp":1792478329198}
+{"level":"error","message":"[vite] SyntaxError: The requested module '/src/components/ClaimPage.tsx?t=1792478320111' does not provide an export named 'ClaimPage'","timestamp":1792478357004,"stack":"SyntaxError: The requested module '/src/components/ClaimPage.tsx?t=1792478320111' does not provide an export named 'ClaimPage'"}
+{"level":"error","message":"[vite] Failed to reload /src/App.tsx. This could be due to syntax errors or importing non-existent modules. (see errors above)","timestamp":1792478357005}
+{"level":"debug","message":"[vite] hot updated: /src/App.tsx","timestamp":1792478372112}
+{"level":"debug","message":"[vite] hot updated: /src/index.css","timestamp":1792478372113}
+{"level":"error","message":"[vite] SyntaxError: The requested module '/src/components/ClaimPage.tsx?t=1792478320111' does not provide an export named 'ClaimPage'","timestamp":1792478419827,"stack":"SyntaxError: The requested module '/src/components/ClaimPage.tsx?t=1792478320111' does not provide an export named 'ClaimPage'"}
+{"level":"error","message":"[vite] Failed to reload /src/App.tsx. This could be due to syntax errors or importing non-existent modules. (see errors above)","timestamp":1792478419828}
+{"level":"debug","message":"[vite] hot updated: /src/App.tsx","timestamp":1792478420183}
+{"level":"debug","message":"[vite] hot updated: /src/index.css","timestamp":1792478420183}
+{"level":"log","message":"restart sse, about to listen","timestamp":1792478561605}
+{"level":"log","message":"listen https://wallet.binance.com/tonbridge/bridge/events?client_id=ce639ab5483fca62a6bebf2df5ff3e5854368a938d1a8cd810ed94b7117b485d&user_info=","timestamp":1792478561612}
+{"level":"log","message":"open {\"isTrusted\":true}","timestamp":1792478562260}
+{"level":"error","message":"[vite] Failed to reload /src/components/ClaimPage.tsx. This could be due to syntax errors or importing non-existent modules. (see errors above)","timestamp":1792478650407}
+{"level":"debug","message":"[vite] hot updated: /src/components/ClaimPage.tsx","timestamp":1792478650412}
+{"level":"debug","message":"[vite] hot updated: /src/index.css","timestamp":1792478650412}
+{"level":"debug","message":"[vite] invalidate /src/components/ClaimPage.tsx: Could not Fast Refresh (export removed)","timestamp":1792478819193}
+{"level":"debug","message":"[vite] hot updated: /src/components/ClaimPage.tsx","timestamp":1792478819193}
+{"level":"debug","message":"[vite] hot updated: /src/index.css","timestamp":1792478819193}
+{"level":"debug","message":"[vite] hot updated: /src/App.tsx","timestamp":1792478820417}
+{"level":"debug","message":"[vite] hot updated: /src/index.css","timestamp":1792478820417}
+{"level":"log","message":"restart sse, about to listen","timestamp":1792478862476}
+{"level":"log","message":"listen https://wallet.binance.com/tonbridge/bridge/events?client_id=ce639ab5483fca62a6bebf2df5ff3e5854368a938d1a8cd810ed94b7117b485d&user_info=","timestamp":1792478862477}
+{"level":"log","message":"open {\"isTrusted\":true}","timestamp":1792478862873}
+{"level":"log","message":"restart sse, about to listen","timestamp":1792479162501}
+{"level":"log","message":"listen https://wallet.binance.com/tonbridge/bridge/events?client_id=ce639ab5483fca62a6bebf2df5ff3e5854368a938d1a8cd810ed94b7117b485d&user_info=","timestamp":1792479162503}
+{"level":"log","message":"open {\"isTrusted\":true}","timestamp":1792479162930}
+{"level":"debug","message":"[vite] hot updated: /src/components/ClaimPage.tsx","timestamp":1792479219776}
+{"level":"debug","message":"[vite] hot updated: /src/index.css","timestamp":1792479219776}
+{"level":"log","message":"error {\"isTrusted\":true}","timestamp":1792479327165}
+{"level":"log","message":"An error occurred: {\"isTrusted\":true}","timestamp":1792479327167}
+{"level":"log","message":"restart sse, about to listen","timestamp":1792479711532}
+{"level":"log","message":"listen https://wallet.binance.com/tonbridge/bridge/events?client_id=ce639ab5483fca62a6bebf2df5ff3e5854368a938d1a8cd810ed94b7117b485d&user_info=","timestamp":1792479711533}
+{"level":"log","message":"open {\"isTrusted\":true}","timestamp":1792479712011}
+{"level":"log","message":"error {\"isTrusted\":true}","timestamp":1792479991001}
+{"level":"log","message":"An error occurred: {\"isTrusted\":true}","timestamp":1792479991001}
+{"level":"debug","message":"[vite] connected.","timestamp":1792480057412}
+{"level":"error","message":"Sender: Failed to get initial state. Please report this bug. {\"type\":\"sender-wallet-providerResult\",\"method\":\"sender_getProviderState\",\"params\":[],\"notificationId\":1792481204094818,\"response\":{\"error\":\"No account exist\"}}","timestamp":1792481206728}
+{"level":"debug","message":"Provider initialization - wallet not connected","timestamp":1792481207523}
+{"level":"log","message":"[vite] server connection lost. Polling for restart...","timestamp":1792481354943}
