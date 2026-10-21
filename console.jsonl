@@ -359,3 +359,10 @@
 {"level":"log","message":"[vite] server connection lost. Polling for restart...","timestamp":1792580189005}
 {"level":"debug","message":"[vite] connected.","timestamp":1792580210010}
 {"level":"debug","message":"[vite] connected.","timestamp":1792580211536}
+{"level":"log","message":"[vite] server connection lost. Polling for restart...","timestamp":1792580225112}
+{"level":"log","message":"[vite] server connection lost. Polling for restart...","timestamp":1792580225118}
+{"level":"debug","message":"[vite] connected.","timestamp":1792580247909}
+{"level":"debug","message":"Provider initialization - wallet not connected","timestamp":1792580574381}
+{"level":"debug","message":"[vite] connected.","timestamp":1792580579258}
+{"level":"debug","message":"[vite] connected.","timestamp":1792580625537}
+{"level":"log","message":"[vite] server connection lost. Polling for restart...","timestamp":1792580685895}

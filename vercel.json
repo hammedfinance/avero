@@ -4,9 +4,5 @@
   "framework": "vite",
   "rewrites": [
     { "source": "/((?!api/).*)", "destination": "/index.html" }
-  ],
-  "functions": {
-    "api/wallet/send.ts": { "maxDuration": 60 },
-    "api/payments/claim.ts": { "maxDuration": 60 }
-  }
+  ]
 }
