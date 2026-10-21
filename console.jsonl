@@ -352,3 +352,6 @@
 {"level":"log","message":"error {\"isTrusted\":true}","timestamp":1792563828810}
 {"level":"log","message":"[vite] server connection lost. Polling for restart...","timestamp":1792563892553}
 {"level":"debug","message":"[vite] connected.","timestamp":1792564491163}
+{"level":"debug","message":"Provider initialization - wallet not connected","timestamp":1792578752045}
+{"level":"debug","message":"[vite] connected.","timestamp":1792578919265}
+{"level":"log","message":"[vite] server connection lost. Polling for restart...","timestamp":1792579051640}

@@ -96,13 +96,13 @@ async function escrowDeposit(walletId: string, depositorAddress: string, claimKe
   await pollCircleTx(approveTx?.id || approveTx?.transaction?.id)
 
   // Step 2: depositFor(address depositor, bytes32 claimKey, uint256 amount)
-  // selector = keccak256("depositFor(address,bytes32,uint256)")[0:4] = 0x5a64d0c3
+  // selector = keccak256("depositFor(address,bytes32,uint256)")[0:4] = 0xcd5bff7e
   const depositorPadded = depositorAddress.replace('0x', '').padStart(64, '0')
   const keyHex = claimKey.replace('0x', '').padStart(64, '0')
   const depositTx = await contractCall(
     walletId,
     ESCROW_ADDRESS,
-    `0x5a64d0c3${depositorPadded}${keyHex}${amountWei}`
+    `0xcd5bff7e${depositorPadded}${keyHex}${amountWei}`
   )
   return depositTx
 }

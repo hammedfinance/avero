@@ -93,7 +93,7 @@ async function escrowReleaseTo(depositId: number, recipientAddress: string, reci
 
   // ABI encode: releaseTo(uint256 depositId, address recipient, bytes signature)
   // selector: keccak256("releaseTo(uint256,address,bytes)") 
-  const selector = '0cecb4b3' // keccak256("releaseTo(uint256,address,bytes)")
+  const selector = 'dce78358' // keccak256("releaseTo(uint256,address,bytes)")
   const idHex = depositId.toString(16).padStart(64, '0')
   const addrHex = recipientAddress.replace('0x', '').padStart(64, '0')
   // bytes offset = 96 (3 * 32)
