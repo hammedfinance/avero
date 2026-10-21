@@ -187,6 +187,7 @@ export function SendMoneyPage({ user }: SendMoneyPageProps) {
         recipientEmail: recipientEmail.trim(),
         amount,
         walletId:       user.walletId ?? '',
+        walletAddress:  user.walletAddress ?? '',
         message: message.trim() || undefined,
       })
       const cTxId = result.circleTransactionId ?? ''

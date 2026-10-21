@@ -9,7 +9,7 @@ import {MockERC20} from "../test-helpers/MockERC20.sol";
 // ─────────────────────────────────────────────────────────────────────────────
 // Internal signature helper — generates a valid releaseTo signature from a
 // known private key, matching the hash construction in the contract:
-//   keccak256(abi.encodePacked(depositId, recipient, block.chainid))
+//   keccak256(abi.encodePacked(depositId, recipient, block.chainid, escrowAddress))
 //   → toEthSignedMessageHash → vm.sign
 // ─────────────────────────────────────────────────────────────────────────────
 abstract contract SignerHelper is Test {
@@ -17,17 +17,19 @@ abstract contract SignerHelper is Test {
     uint256 internal constant SIGNER_PRIVATE_KEY = 0xABCDEF1234567890ABCDEF1234567890ABCDEF1234567890ABCDEF1234567890;
 
     /// @dev Build the bytes signature the contract expects for a releaseTo call.
-    function _buildSig(uint256 depositId, address recipient) internal view returns (bytes memory) {
-        bytes32 hash    = keccak256(abi.encodePacked(depositId, recipient, block.chainid));
+    ///      Must include the escrow address to match the contract's hash:
+    ///      keccak256(abi.encodePacked(depositId, recipient, block.chainid, address(this)))
+    function _buildSig(uint256 depositId, address recipient, address escrowAddr) internal view returns (bytes memory) {
+        bytes32 hash    = keccak256(abi.encodePacked(depositId, recipient, block.chainid, escrowAddr));
         bytes32 ethHash = MessageHashUtils.toEthSignedMessageHash(hash);
         (uint8 v, bytes32 r, bytes32 s) = vm.sign(SIGNER_PRIVATE_KEY, ethHash);
         return abi.encodePacked(r, s, v);
     }
 
     /// @dev Build a signature using a *different* private key (wrong signer).
-    function _buildWrongSig(uint256 depositId, address recipient) internal view returns (bytes memory) {
+    function _buildWrongSig(uint256 depositId, address recipient, address escrowAddr) internal view returns (bytes memory) {
         uint256 wrongKey = 0xDEADBEEFDEADBEEFDEADBEEFDEADBEEFDEADBEEFDEADBEEFDEADBEEFDEADBEEF;
-        bytes32 hash    = keccak256(abi.encodePacked(depositId, recipient, block.chainid));
+        bytes32 hash    = keccak256(abi.encodePacked(depositId, recipient, block.chainid, escrowAddr));
         bytes32 ethHash = MessageHashUtils.toEthSignedMessageHash(hash);
         (uint8 v, bytes32 r, bytes32 s) = vm.sign(wrongKey, ethHash);
         return abi.encodePacked(r, s, v);
@@ -75,9 +77,9 @@ contract EscrowHandler is SignerHelper {
 
         bytes32 key = keccak256(abi.encode("handler", keySeed, block.timestamp, depositIds.length));
 
-        vm.prank(depositor);
         uint256 id = escrow.nextDepositId();
-        escrow.deposit(key, amount);
+        // depositFor pulls from depositor; approval was set in constructor
+        escrow.depositFor(depositor, key, amount);
 
         depositIds.push(id);
         activeBalance += amount;
@@ -115,7 +117,7 @@ contract EscrowHandler is SignerHelper {
         // releaseTo reverts if expiry has passed, so skip those too.
         if (block.timestamp > dep.expiry) return;
 
-        bytes memory sig = _buildSig(id, recipient);
+        bytes memory sig = _buildSig(id, recipient, address(escrow));
         escrow.releaseTo(id, recipient, sig);
         activeBalance -= dep.amount;
     }
@@ -183,12 +185,12 @@ contract AveiroEscrowTest is SignerHelper {
     }
 
     // =========================================================================
-    // 2. deposit — happy path
+    // 2. depositFor — happy path
     // =========================================================================
 
     function test_Deposit_StoresCorrectRecord() public {
         vm.prank(alice);
-        escrow.deposit(KEY_A, DEPOSIT_AMOUNT);
+        escrow.depositFor(alice, KEY_A, DEPOSIT_AMOUNT);
 
         AveiroEscrow.Deposit memory dep = escrow.getDeposit(1);
         assertEq(dep.sender,  alice);
@@ -204,7 +206,7 @@ contract AveiroEscrowTest is SignerHelper {
         uint256 escrowBefore = usdc.balanceOf(address(escrow));
 
         vm.prank(alice);
-        escrow.deposit(KEY_A, DEPOSIT_AMOUNT);
+        escrow.depositFor(alice, KEY_A, DEPOSIT_AMOUNT);
 
         assertEq(usdc.balanceOf(alice),           aliceBefore  - DEPOSIT_AMOUNT);
         assertEq(usdc.balanceOf(address(escrow)), escrowBefore + DEPOSIT_AMOUNT);
@@ -212,17 +214,17 @@ contract AveiroEscrowTest is SignerHelper {
 
     function test_Deposit_IncrementsNextDepositId() public {
         vm.prank(alice);
-        escrow.deposit(KEY_A, DEPOSIT_AMOUNT);
+        escrow.depositFor(alice, KEY_A, DEPOSIT_AMOUNT);
         assertEq(escrow.nextDepositId(), 2);
 
         vm.prank(alice);
-        escrow.deposit(KEY_B, DEPOSIT_AMOUNT);
+        escrow.depositFor(alice, KEY_B, DEPOSIT_AMOUNT);
         assertEq(escrow.nextDepositId(), 3);
     }
 
     function test_Deposit_MapsKeyToDepositId() public {
         vm.prank(alice);
-        escrow.deposit(KEY_A, DEPOSIT_AMOUNT);
+        escrow.depositFor(alice, KEY_A, DEPOSIT_AMOUNT);
         assertEq(escrow.depositIdForKey(KEY_A), 1);
     }
 
@@ -232,26 +234,26 @@ contract AveiroEscrowTest is SignerHelper {
         vm.prank(alice);
         vm.expectEmit(true, true, false, true, address(escrow));
         emit AveiroEscrow.Deposited(1, alice, KEY_A, DEPOSIT_AMOUNT, expectedExpiry);
-        escrow.deposit(KEY_A, DEPOSIT_AMOUNT);
+        escrow.depositFor(alice, KEY_A, DEPOSIT_AMOUNT);
     }
 
     function test_Deposit_AllowsReuseOfKeyAfterRelease() public {
         // First deposit → release it via signer
         vm.prank(alice);
-        escrow.deposit(KEY_A, DEPOSIT_AMOUNT);
+        escrow.depositFor(alice, KEY_A, DEPOSIT_AMOUNT);
 
-        bytes memory sig = _buildSig(1, carol);
+        bytes memory sig = _buildSig(1, carol, address(escrow));
         escrow.releaseTo(1, carol, sig);
 
         // Same key can now be reused because old deposit is claimed/released.
         vm.prank(bob);
-        escrow.deposit(KEY_A, 50e6);
+        escrow.depositFor(bob, KEY_A, 50e6);
         assertEq(escrow.nextDepositId(), 3);
     }
 
     function test_Deposit_AllowsReuseOfKeyAfterCancel() public {
         vm.prank(alice);
-        escrow.deposit(KEY_A, DEPOSIT_AMOUNT);
+        escrow.depositFor(alice, KEY_A, DEPOSIT_AMOUNT);
 
         // warp past expiry so alice can cancel.
         vm.warp(block.timestamp + 7 days + 1);
@@ -260,27 +262,27 @@ contract AveiroEscrowTest is SignerHelper {
 
         // Same key reusable now.
         vm.prank(bob);
-        escrow.deposit(KEY_A, 50e6);
+        escrow.depositFor(bob, KEY_A, 50e6);
         assertEq(escrow.nextDepositId(), 3);
     }
 
     // =========================================================================
-    // 3. deposit — revert paths
+    // 3. depositFor — revert paths
     // =========================================================================
 
     function test_Deposit_RevertsOnZeroAmount() public {
         vm.prank(alice);
         vm.expectRevert(AveiroEscrow.ZeroAmount.selector);
-        escrow.deposit(KEY_A, 0);
+        escrow.depositFor(alice, KEY_A, 0);
     }
 
     function test_Deposit_RevertsOnKeyAlreadyUsed() public {
         vm.prank(alice);
-        escrow.deposit(KEY_A, DEPOSIT_AMOUNT);
+        escrow.depositFor(alice, KEY_A, DEPOSIT_AMOUNT);
 
         vm.prank(bob);
         vm.expectRevert(AveiroEscrow.KeyAlreadyUsed.selector);
-        escrow.deposit(KEY_A, 50e6);
+        escrow.depositFor(bob, KEY_A, 50e6);
     }
 
     // =========================================================================
@@ -289,10 +291,10 @@ contract AveiroEscrowTest is SignerHelper {
 
     function test_ReleaseTo_SendsUSDCToRecipient() public {
         vm.prank(alice);
-        escrow.deposit(KEY_A, DEPOSIT_AMOUNT);
+        escrow.depositFor(alice, KEY_A, DEPOSIT_AMOUNT);
 
         uint256 carolBefore = usdc.balanceOf(carol);
-        bytes memory sig = _buildSig(1, carol);
+        bytes memory sig = _buildSig(1, carol, address(escrow));
         escrow.releaseTo(1, carol, sig);
 
         assertEq(usdc.balanceOf(carol), carolBefore + DEPOSIT_AMOUNT);
@@ -300,9 +302,9 @@ contract AveiroEscrowTest is SignerHelper {
 
     function test_ReleaseTo_MarksDepositAsClaimed() public {
         vm.prank(alice);
-        escrow.deposit(KEY_A, DEPOSIT_AMOUNT);
+        escrow.depositFor(alice, KEY_A, DEPOSIT_AMOUNT);
 
-        bytes memory sig = _buildSig(1, carol);
+        bytes memory sig = _buildSig(1, carol, address(escrow));
         escrow.releaseTo(1, carol, sig);
 
         AveiroEscrow.Deposit memory dep = escrow.getDeposit(1);
@@ -312,9 +314,9 @@ contract AveiroEscrowTest is SignerHelper {
 
     function test_ReleaseTo_EmitsReleasedEvent() public {
         vm.prank(alice);
-        escrow.deposit(KEY_A, DEPOSIT_AMOUNT);
+        escrow.depositFor(alice, KEY_A, DEPOSIT_AMOUNT);
 
-        bytes memory sig = _buildSig(1, carol);
+        bytes memory sig = _buildSig(1, carol, address(escrow));
         vm.expectEmit(true, true, false, true, address(escrow));
         emit AveiroEscrow.Released(1, carol, DEPOSIT_AMOUNT);
         escrow.releaseTo(1, carol, sig);
@@ -322,11 +324,11 @@ contract AveiroEscrowTest is SignerHelper {
 
     function test_ReleaseTo_DecreasesEscrowBalance() public {
         vm.prank(alice);
-        escrow.deposit(KEY_A, DEPOSIT_AMOUNT);
+        escrow.depositFor(alice, KEY_A, DEPOSIT_AMOUNT);
 
         assertEq(usdc.balanceOf(address(escrow)), DEPOSIT_AMOUNT);
 
-        bytes memory sig = _buildSig(1, carol);
+        bytes memory sig = _buildSig(1, carol, address(escrow));
         escrow.releaseTo(1, carol, sig);
 
         assertEq(usdc.balanceOf(address(escrow)), 0);
@@ -339,9 +341,9 @@ contract AveiroEscrowTest is SignerHelper {
     function test_ReleaseTo_RevertsWithWrongKey() public {
         // Signature produced by a key that is NOT the registered SIGNER.
         vm.prank(alice);
-        escrow.deposit(KEY_A, DEPOSIT_AMOUNT);
+        escrow.depositFor(alice, KEY_A, DEPOSIT_AMOUNT);
 
-        bytes memory wrongSig = _buildWrongSig(1, carol);
+        bytes memory wrongSig = _buildWrongSig(1, carol, address(escrow));
         vm.expectRevert(AveiroEscrow.Unauthorized.selector);
         escrow.releaseTo(1, carol, wrongSig);
     }
@@ -349,9 +351,9 @@ contract AveiroEscrowTest is SignerHelper {
     function test_ReleaseTo_RevertsWithWrongDepositId() public {
         // Signature covers depositId=2 but we call with depositId=1.
         vm.prank(alice);
-        escrow.deposit(KEY_A, DEPOSIT_AMOUNT);
+        escrow.depositFor(alice, KEY_A, DEPOSIT_AMOUNT);
 
-        bytes32 hash    = keccak256(abi.encodePacked(uint256(2), carol, block.chainid));
+        bytes32 hash    = keccak256(abi.encodePacked(uint256(2), carol, block.chainid, address(escrow)));
         bytes32 ethHash = MessageHashUtils.toEthSignedMessageHash(hash);
         (uint8 v, bytes32 r, bytes32 s) = vm.sign(SIGNER_PRIVATE_KEY, ethHash);
         bytes memory mismatchedSig = abi.encodePacked(r, s, v);
@@ -362,37 +364,37 @@ contract AveiroEscrowTest is SignerHelper {
 
     function test_ReleaseTo_RevertsOnZeroRecipient() public {
         vm.prank(alice);
-        escrow.deposit(KEY_A, DEPOSIT_AMOUNT);
+        escrow.depositFor(alice, KEY_A, DEPOSIT_AMOUNT);
 
         // Build a valid signature for address(0) recipient — contract checks
         // Unauthorized first (SIGNER check), then ZeroAddress.  So sign for
         // address(0) with the correct key to get past the signature check.
-        bytes memory sig = _buildSig(1, address(0));
+        bytes memory sig = _buildSig(1, address(0), address(escrow));
         vm.expectRevert(AveiroEscrow.ZeroAddress.selector);
         escrow.releaseTo(1, address(0), sig);
     }
 
     function test_ReleaseTo_RevertsOnDepositNotFound() public {
-        bytes memory sig = _buildSig(999, carol);
+        bytes memory sig = _buildSig(999, carol, address(escrow));
         vm.expectRevert(AveiroEscrow.DepositNotFound.selector);
         escrow.releaseTo(999, carol, sig);
     }
 
     function test_ReleaseTo_RevertsOnAlreadySettled_Released() public {
         vm.prank(alice);
-        escrow.deposit(KEY_A, DEPOSIT_AMOUNT);
+        escrow.depositFor(alice, KEY_A, DEPOSIT_AMOUNT);
 
-        bytes memory sig = _buildSig(1, carol);
+        bytes memory sig = _buildSig(1, carol, address(escrow));
         escrow.releaseTo(1, carol, sig); // first release → OK
 
-        bytes memory sig2 = _buildSig(1, carol);
+        bytes memory sig2 = _buildSig(1, carol, address(escrow));
         vm.expectRevert(AveiroEscrow.AlreadySettled.selector);
         escrow.releaseTo(1, carol, sig2); // second release → revert
     }
 
     function test_ReleaseTo_RevertsOnAlreadySettled_Cancelled() public {
         vm.prank(alice);
-        escrow.deposit(KEY_A, DEPOSIT_AMOUNT);
+        escrow.depositFor(alice, KEY_A, DEPOSIT_AMOUNT);
 
         // Warp past expiry so alice can cancel.
         vm.warp(block.timestamp + 7 days + 1);
@@ -401,20 +403,20 @@ contract AveiroEscrowTest is SignerHelper {
 
         // releaseTo checks ExpiryPassed before AlreadySettled, so the error
         // observed here is ExpiryPassed (the deposit is both expired AND cancelled).
-        bytes memory sig = _buildSig(1, carol);
+        bytes memory sig = _buildSig(1, carol, address(escrow));
         vm.expectRevert(AveiroEscrow.ExpiryPassed.selector);
         escrow.releaseTo(1, carol, sig);
     }
 
     function test_ReleaseTo_RevertsAfterExpiry() public {
         vm.prank(alice);
-        escrow.deposit(KEY_A, DEPOSIT_AMOUNT);
+        escrow.depositFor(alice, KEY_A, DEPOSIT_AMOUNT);
 
         // Warp past expiry — releaseTo should revert with ExpiryPassed.
         AveiroEscrow.Deposit memory dep = escrow.getDeposit(1);
         vm.warp(dep.expiry + 1);
 
-        bytes memory sig = _buildSig(1, carol);
+        bytes memory sig = _buildSig(1, carol, address(escrow));
         vm.expectRevert(AveiroEscrow.ExpiryPassed.selector);
         escrow.releaseTo(1, carol, sig);
     }
@@ -425,7 +427,7 @@ contract AveiroEscrowTest is SignerHelper {
 
     function test_Cancel_RefundsSenderAfterExpiry() public {
         vm.prank(alice);
-        escrow.deposit(KEY_A, DEPOSIT_AMOUNT);
+        escrow.depositFor(alice, KEY_A, DEPOSIT_AMOUNT);
 
         uint256 aliceBefore = usdc.balanceOf(alice);
         vm.warp(block.timestamp + 7 days + 1);
@@ -437,7 +439,7 @@ contract AveiroEscrowTest is SignerHelper {
 
     function test_Cancel_MarksDepositAsCancelled() public {
         vm.prank(alice);
-        escrow.deposit(KEY_A, DEPOSIT_AMOUNT);
+        escrow.depositFor(alice, KEY_A, DEPOSIT_AMOUNT);
 
         vm.warp(block.timestamp + 7 days + 1);
         vm.prank(alice);
@@ -450,7 +452,7 @@ contract AveiroEscrowTest is SignerHelper {
 
     function test_Cancel_EmitsCancelledEvent() public {
         vm.prank(alice);
-        escrow.deposit(KEY_A, DEPOSIT_AMOUNT);
+        escrow.depositFor(alice, KEY_A, DEPOSIT_AMOUNT);
 
         vm.warp(block.timestamp + 7 days + 1);
         vm.prank(alice);
@@ -461,7 +463,7 @@ contract AveiroEscrowTest is SignerHelper {
 
     function test_Cancel_ExactlyAtExpiry() public {
         vm.prank(alice);
-        escrow.deposit(KEY_A, DEPOSIT_AMOUNT);
+        escrow.depositFor(alice, KEY_A, DEPOSIT_AMOUNT);
 
         // warp to exactly the expiry timestamp.
         AveiroEscrow.Deposit memory dep = escrow.getDeposit(1);
@@ -484,7 +486,7 @@ contract AveiroEscrowTest is SignerHelper {
 
     function test_Cancel_RevertsWhenWrongSender() public {
         vm.prank(alice);
-        escrow.deposit(KEY_A, DEPOSIT_AMOUNT);
+        escrow.depositFor(alice, KEY_A, DEPOSIT_AMOUNT);
 
         vm.warp(block.timestamp + 7 days + 1);
         vm.prank(bob); // bob is not the depositor
@@ -494,7 +496,7 @@ contract AveiroEscrowTest is SignerHelper {
 
     function test_Cancel_RevertsBeforeExpiry() public {
         vm.prank(alice);
-        escrow.deposit(KEY_A, DEPOSIT_AMOUNT);
+        escrow.depositFor(alice, KEY_A, DEPOSIT_AMOUNT);
 
         // One second before expiry.
         AveiroEscrow.Deposit memory dep = escrow.getDeposit(1);
@@ -506,7 +508,7 @@ contract AveiroEscrowTest is SignerHelper {
 
     function test_Cancel_RevertsOnDoubleCancel() public {
         vm.prank(alice);
-        escrow.deposit(KEY_A, DEPOSIT_AMOUNT);
+        escrow.depositFor(alice, KEY_A, DEPOSIT_AMOUNT);
 
         vm.warp(block.timestamp + 7 days + 1);
         vm.prank(alice);
@@ -519,10 +521,10 @@ contract AveiroEscrowTest is SignerHelper {
 
     function test_Cancel_RevertsIfAlreadyReleased() public {
         vm.prank(alice);
-        escrow.deposit(KEY_A, DEPOSIT_AMOUNT);
+        escrow.depositFor(alice, KEY_A, DEPOSIT_AMOUNT);
 
         // Signer releases the deposit before expiry.
-        bytes memory sig = _buildSig(1, carol);
+        bytes memory sig = _buildSig(1, carol, address(escrow));
         escrow.releaseTo(1, carol, sig);
 
         // Alice tries to cancel after expiry — should revert because already settled.
@@ -548,7 +550,7 @@ contract AveiroEscrowTest is SignerHelper {
 
     function test_DepositIdForKey_AfterDeposit() public {
         vm.prank(alice);
-        escrow.deposit(KEY_A, DEPOSIT_AMOUNT);
+        escrow.depositFor(alice, KEY_A, DEPOSIT_AMOUNT);
         assertEq(escrow.depositIdForKey(KEY_A), 1);
     }
 
@@ -559,12 +561,12 @@ contract AveiroEscrowTest is SignerHelper {
     function test_FullLifecycle_DepositThenReleaseTo() public {
         // alice deposits, signer releases to carol
         vm.prank(alice);
-        escrow.deposit(KEY_A, DEPOSIT_AMOUNT);
+        escrow.depositFor(alice, KEY_A, DEPOSIT_AMOUNT);
 
         assertEq(usdc.balanceOf(address(escrow)), DEPOSIT_AMOUNT);
 
         uint256 carolBefore = usdc.balanceOf(carol);
-        bytes memory sig = _buildSig(1, carol);
+        bytes memory sig = _buildSig(1, carol, address(escrow));
         escrow.releaseTo(1, carol, sig);
 
         assertEq(usdc.balanceOf(carol),           carolBefore + DEPOSIT_AMOUNT);
@@ -574,7 +576,7 @@ contract AveiroEscrowTest is SignerHelper {
 
     function test_FullLifecycle_DepositThenCancelAfterExpiry() public {
         vm.prank(alice);
-        escrow.deposit(KEY_A, DEPOSIT_AMOUNT);
+        escrow.depositFor(alice, KEY_A, DEPOSIT_AMOUNT);
 
         uint256 aliceBefore = usdc.balanceOf(alice);
         vm.warp(block.timestamp + 7 days + 1);
@@ -589,14 +591,14 @@ contract AveiroEscrowTest is SignerHelper {
     function test_MultipleDeposits_IndependentlySettled() public {
         // alice deposits two separate keys; one is released by signer, one cancelled
         vm.startPrank(alice);
-        escrow.deposit(KEY_A, 100e6);
-        escrow.deposit(KEY_B, 200e6);
+        escrow.depositFor(alice, KEY_A, 100e6);
+        escrow.depositFor(alice, KEY_B, 200e6);
         vm.stopPrank();
 
         assertEq(usdc.balanceOf(address(escrow)), 300e6);
 
         // signer releases deposit 1
-        bytes memory sig1 = _buildSig(1, carol);
+        bytes memory sig1 = _buildSig(1, carol, address(escrow));
         escrow.releaseTo(1, carol, sig1);
         assertEq(usdc.balanceOf(address(escrow)), 200e6);
 
@@ -617,7 +619,7 @@ contract AveiroEscrowTest is SignerHelper {
         amount = bound(amount, 1, 10_000e6); // within alice's balance
 
         vm.prank(alice);
-        escrow.deposit(KEY_A, amount);
+        escrow.depositFor(alice, KEY_A, amount);
 
         AveiroEscrow.Deposit memory dep = escrow.getDeposit(1);
         assertEq(dep.amount, amount);
@@ -630,7 +632,7 @@ contract AveiroEscrowTest is SignerHelper {
         warpOffset = uint64(bound(uint256(warpOffset), 0, 30 days));
 
         vm.prank(alice);
-        escrow.deposit(KEY_A, DEPOSIT_AMOUNT);
+        escrow.depositFor(alice, KEY_A, DEPOSIT_AMOUNT);
 
         AveiroEscrow.Deposit memory dep = escrow.getDeposit(1);
         vm.warp(dep.expiry + uint256(warpOffset));
@@ -647,7 +649,7 @@ contract AveiroEscrowTest is SignerHelper {
         warpOffset = uint64(bound(uint256(warpOffset), 0, 7 days - 1));
 
         vm.prank(alice);
-        escrow.deposit(KEY_A, DEPOSIT_AMOUNT);
+        escrow.depositFor(alice, KEY_A, DEPOSIT_AMOUNT);
 
         AveiroEscrow.Deposit memory dep = escrow.getDeposit(1);
         // Stay strictly before expiry.
@@ -663,10 +665,10 @@ contract AveiroEscrowTest is SignerHelper {
         vm.assume(keyA != keyB);
 
         vm.prank(alice);
-        escrow.deposit(keyA, DEPOSIT_AMOUNT);
+        escrow.depositFor(alice, keyA, DEPOSIT_AMOUNT);
 
         vm.prank(alice);
-        escrow.deposit(keyB, DEPOSIT_AMOUNT);
+        escrow.depositFor(alice, keyB, DEPOSIT_AMOUNT);
 
         assertNotEq(escrow.depositIdForKey(keyA), escrow.depositIdForKey(keyB));
     }
@@ -676,9 +678,9 @@ contract AveiroEscrowTest is SignerHelper {
         vm.assume(recipient != address(0));
 
         vm.prank(alice);
-        escrow.deposit(KEY_A, DEPOSIT_AMOUNT);
+        escrow.depositFor(alice, KEY_A, DEPOSIT_AMOUNT);
 
-        bytes memory sig = _buildSig(1, recipient);
+        bytes memory sig = _buildSig(1, recipient, address(escrow));
         escrow.releaseTo(1, recipient, sig);
 
         assertEq(usdc.balanceOf(recipient), DEPOSIT_AMOUNT);

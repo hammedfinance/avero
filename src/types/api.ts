@@ -56,6 +56,7 @@ export interface SendPayload {
   recipientEmail: string
   amount: string
   walletId: string
+  walletAddress?: string
   message?: string
 }
 

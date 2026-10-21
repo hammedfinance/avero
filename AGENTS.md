@@ -26,7 +26,7 @@ Send USDC to any email address. Recipients without a wallet get funds held in th
 
 | Contract | Network | Address | Explorer |
 |---|---|---|---|
-| AveiroEscrow | Arc Testnet | `0xfcb76ea576f5fa395f0c4e54ce39dafa6d7031db` | https://explorer.testnet.arc.io/address/0xfcb76ea576f5fa395f0c4e54ce39dafa6d7031db |
+| AveiroEscrow | Arc Testnet | `0xf7162548acae78c6a81f2322cc796e2bbfa3beb0` | https://explorer.testnet.arc.io/address/0xf7162548acae78c6a81f2322cc796e2bbfa3beb0 |
 
 ### AveiroEscrow
 - Deploy tx: `0xb9381013b9e64507644ab9a93d08eb015e84172eb7f7a4ed669f0b0ea246dc85`

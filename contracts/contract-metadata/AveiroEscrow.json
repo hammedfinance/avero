@@ -1,13 +1,27 @@
 {
-  "contractAddress": "0xfcb76ea576f5fa395f0c4e54ce39dafa6d7031db",
+  "contractAddress": "0xf7162548acae78c6a81f2322cc796e2bbfa3beb0",
   "network": "ARC-TESTNET",
   "deployerWalletId": "3c2464b2-8369-52e2-a782-800bbeca5396",
   "contract_code_path": "/home/user/app/contracts/AveiroEscrow.sol",
   "contract_compiled_code_path": "/home/user/app/contracts/out/AveiroEscrow.sol/AveiroEscrow.json",
   "contract_network_and_links": {
-    "Arc Testnet": "https://explorer.testnet.arc.io/address/0xfcb76ea576f5fa395f0c4e54ce39dafa6d7031db"
+    "Arc Testnet": "https://explorer.testnet.arc.io/address/0xf7162548acae78c6a81f2322cc796e2bbfa3beb0"
   },
   "contract_deployments": [
+    {
+      "chain": "Arc Testnet",
+      "address": "0xf7162548acae78c6a81f2322cc796e2bbfa3beb0",
+      "explorerUrl": "https://explorer.testnet.arc.io/address/0xf7162548acae78c6a81f2322cc796e2bbfa3beb0",
+      "txHash": "0xe1adb5716f1ed527bf88986ae8733e346776e226cc2bc7fd8b57d6b9e553ca59",
+      "deployedAt": "2026-10-21T06:29:42.668Z"
+    },
+    {
+      "chain": "Arc Testnet",
+      "address": "0x1a8a7fbbdd3d1f49de32cb63f22e51e093dee01f",
+      "explorerUrl": "https://explorer.testnet.arc.io/address/0x1a8a7fbbdd3d1f49de32cb63f22e51e093dee01f",
+      "txHash": "0x032ae68bd4cd8efc6bb7e3a8b1ec91beafb943a44c07bd95c33798ad93eb80ff",
+      "deployedAt": "2026-10-21T06:13:14.565Z"
+    },
     {
       "chain": "Arc Testnet",
       "address": "0xfcb76ea576f5fa395f0c4e54ce39dafa6d7031db",
@@ -40,7 +54,7 @@
           "internalType": "address"
         },
         {
-          "name": "signer",
+          "name": "signer_",
           "type": "address",
           "internalType": "address"
         }
@@ -101,8 +115,13 @@
     },
     {
       "type": "function",
-      "name": "deposit",
+      "name": "depositFor",
       "inputs": [
+        {
+          "name": "depositor",
+          "type": "address",
+          "internalType": "address"
+        },
         {
           "name": "claimKey",
           "type": "bytes32",

@@ -69,18 +69,20 @@ contract AveiroEscrow is ReentrancyGuard {
 
     /// @notice Initializes the escrow with the USDC token address and sets deployer as owner.
     /// @param usdc ERC-20 USDC token address.
-    constructor(address usdc, address signer) {
+    constructor(address usdc, address signer_) {
         if (usdc == address(0)) revert ZeroAddress();
+        if (signer_ == address(0)) revert ZeroAddress();
 
         USDC = usdc;
-        SIGNER = signer;
+        SIGNER = signer_;
         nextDepositId = 1;
     }
 
-    /// @notice Deposits USDC into escrow under a claim key.
+    /// @notice Pulls USDC from a depositor wallet into escrow under a claim key.
+    /// @param depositor Wallet address to pull escrowed USDC from.
     /// @param claimKey Off-chain claim key used later for claiming.
-    /// @param amount USDC amount to escrow.
-    function deposit(bytes32 claimKey, uint256 amount) external nonReentrant {
+    /// @param amount Requested USDC amount to escrow.
+    function depositFor(address depositor, bytes32 claimKey, uint256 amount) external nonReentrant {
         if (amount == 0) revert ZeroAmount();
 
         uint256 existingId = keyToId[claimKey];
@@ -89,13 +91,18 @@ contract AveiroEscrow is ReentrancyGuard {
             if (!existing.claimed && !existing.cancelled) revert KeyAlreadyUsed();
         }
 
+        uint256 balanceBefore = IERC20(USDC).balanceOf(address(this));
+        IERC20(USDC).safeTransferFrom(depositor, address(this), amount);
+        uint256 balanceAfter = IERC20(USDC).balanceOf(address(this));
+        uint256 actualAmount = balanceAfter - balanceBefore;
+
         uint256 depositId = nextDepositId;
         uint64 expiry = uint64(block.timestamp + EXPIRY_SECONDS);
 
         deposits[depositId] = Deposit({
-            sender: msg.sender,
+            sender: depositor,
             claimKey: claimKey,
-            amount: amount,
+            amount: actualAmount,
             expiry: expiry,
             claimed: false,
             cancelled: false
@@ -104,12 +111,7 @@ contract AveiroEscrow is ReentrancyGuard {
         keyToId[claimKey] = depositId;
         nextDepositId = depositId + 1;
 
-        uint256 balanceBefore = IERC20(USDC).balanceOf(address(this));
-        IERC20(USDC).safeTransferFrom(msg.sender, address(this), amount);
-        uint256 balanceAfter = IERC20(USDC).balanceOf(address(this));
-        deposits[depositId].amount = balanceAfter - balanceBefore;
-
-        emit Deposited(depositId, msg.sender, claimKey, deposits[depositId].amount, expiry);
+        emit Deposited(depositId, depositor, claimKey, actualAmount, expiry);
     }
 
     /// @notice Cancels an expired deposit and refunds the original sender.
@@ -135,7 +137,7 @@ contract AveiroEscrow is ReentrancyGuard {
         external
         nonReentrant
     {
-        bytes32 hash = keccak256(abi.encodePacked(depositId, recipient, block.chainid));
+        bytes32 hash = keccak256(abi.encodePacked(depositId, recipient, block.chainid, address(this)));
         bytes32 ethHash = MessageHashUtils.toEthSignedMessageHash(hash);
         address recovered = ECDSA.recover(ethHash, signature);
         if (recovered != SIGNER) revert Unauthorized();

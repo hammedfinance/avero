@@ -336,3 +336,19 @@
 {"level":"log","message":"[vite] server connection lost. Polling for restart...","timestamp":1792481354943}
 {"level":"debug","message":"[vite] connected.","timestamp":1792561447094}
 {"level":"log","message":"[vite] server connection lost. Polling for restart...","timestamp":1792561589253}
+{"level":"log","message":"[vite] server connection lost. Polling for restart...","timestamp":1792561620684}
+{"level":"log","message":"restart sse, about to listen","timestamp":1792561922776}
+{"level":"log","message":"listen https://wallet.binance.com/tonbridge/bridge/events?client_id=ce639ab5483fca62a6bebf2df5ff3e5854368a938d1a8cd810ed94b7117b485d&user_info=","timestamp":1792561922777}
+{"level":"log","message":"error {\"isTrusted\":true}","timestamp":1792561934153}
+{"level":"log","message":"An error occurred: {\"isTrusted\":true}","timestamp":1792561934153}
+{"level":"debug","message":"[vite] connected.","timestamp":1792562289148}
+{"level":"log","message":"[vite] server connection lost. Polling for restart...","timestamp":1792562369444}
+{"level":"debug","message":"[vite] connected.","timestamp":1792562399835}
+{"level":"log","message":"[vite] server connection lost. Polling for restart...","timestamp":1792562403880}
+{"level":"debug","message":"[vite] connected.","timestamp":1792563525062}
+{"level":"log","message":"restart sse, about to listen","timestamp":1792563804776}
+{"level":"log","message":"listen https://wallet.binance.com/tonbridge/bridge/events?client_id=ce639ab5483fca62a6bebf2df5ff3e5854368a938d1a8cd810ed94b7117b485d&user_info=","timestamp":1792563804777}
+{"level":"log","message":"[vite] server connection lost. Polling for restart...","timestamp":1792563827829}
+{"level":"log","message":"error {\"isTrusted\":true}","timestamp":1792563828810}
+{"level":"log","message":"[vite] server connection lost. Polling for restart...","timestamp":1792563892553}
+{"level":"debug","message":"[vite] connected.","timestamp":1792564491163}
