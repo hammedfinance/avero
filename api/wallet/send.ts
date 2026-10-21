@@ -83,29 +83,7 @@ async function pollCircleTx(txId: string, maxWait = 45000): Promise<string> {
   return 'TIMEOUT'
 }
 
-async function escrowDeposit(walletId: string, depositorAddress: string, claimKey: string, amount: string) {
-  const amountWei = BigInt(Math.round(parseFloat(amount) * 1_000_000)).toString(16).padStart(64, '0')
 
-  // Step 1: approve(address spender, uint256 amount) — selector 0x095ea7b3
-  const spenderPadded = ESCROW_ADDRESS.replace('0x', '').padStart(64, '0')
-  const approveTx = await contractCall(
-    walletId,
-    USDC_CONTRACT,
-    `0x095ea7b3${spenderPadded}${amountWei}`
-  )
-  await pollCircleTx(approveTx?.id || approveTx?.transaction?.id)
-
-  // Step 2: depositFor(address depositor, bytes32 claimKey, uint256 amount)
-  // selector = keccak256("depositFor(address,bytes32,uint256)")[0:4] = 0xcd5bff7e
-  const depositorPadded = depositorAddress.replace('0x', '').padStart(64, '0')
-  const keyHex = claimKey.replace('0x', '').padStart(64, '0')
-  const depositTx = await contractCall(
-    walletId,
-    ESCROW_ADDRESS,
-    `0xcd5bff7e${depositorPadded}${keyHex}${amountWei}`
-  )
-  return depositTx
-}
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' })
@@ -123,12 +101,11 @@ export default async function handler(req, res) {
 
   try {
     if (!recipient?.wallet_address) {
-      // NEW RECIPIENT — lock funds in escrow contract
+      // NEW RECIPIENT — lock funds in escrow contract (fire-and-forget worker)
       const claimKey = '0x' + crypto.randomBytes(32).toString('hex')
       const senderAddress = walletAddress || ''
-      const tx = await escrowDeposit(walletId, senderAddress, claimKey, amount)
-      const circleTransactionId = tx?.id || tx?.transaction?.id
 
+      // Save transaction record immediately
       const { data: saved } = await db.from('transactions').insert({
         sender_email: senderEmail,
         recipient_email: recipientEmail,
@@ -136,12 +113,16 @@ export default async function handler(req, res) {
         currency: 'USDC',
         message: note || '',
         status: 'PENDING_CLAIM',
-        circle_transaction_id: circleTransactionId,
         claim_key: claimKey,
-        block_explorer_url: circleTransactionId
-          ? `https://explorer.testnet.arc.io/tx/${circleTransactionId}`
-          : null,
       }).select().maybeSingle()
+
+      // Fire escrow worker in background — do NOT await
+      const workerUrl = `${req.headers['x-forwarded-proto'] || 'https'}://${req.headers.host}/api/wallet/escrow-worker`
+      fetch(workerUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ walletId, walletAddress: senderAddress, claimKey, amount, transactionDbId: saved?.id }),
+      }).catch(e => console.error('[escrow-worker fire]', e))
 
       try {
         const resend = new Resend(process.env.RESEND_API_KEY)
