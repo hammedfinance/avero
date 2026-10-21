@@ -48,7 +48,8 @@ async function circleTransfer(walletId: string, destinationAddress: string, amou
 
 const USDC_CONTRACT = '0x3600000000000000000000000000000000000000'
 
-async function approveUsdc(walletId: string, amount: string, ciphertext: string) {
+async function approveUsdc(walletId: string, amount: string) {
+  const ciphertext = await getEntitySecretCiphertext()
   // Encode approve(address spender, uint256 amount)
   // selector: keccak256("approve(address,uint256)") = 0x095ea7b3
   const selector = '095ea7b3'
@@ -75,9 +76,11 @@ async function approveUsdc(walletId: string, amount: string, ciphertext: string)
   return data.data
 }
 
-async function escrowDeposit(walletId: string, amount: string, claimKey: string, ciphertext: string) {
-  // First approve USDC spending
-  await approveUsdc(walletId, amount, ciphertext)
+async function escrowDeposit(walletId: string, amount: string, claimKey: string) {
+  // First approve USDC spending (fresh ciphertext inside)
+  await approveUsdc(walletId, amount)
+  // Fresh ciphertext for the deposit call
+  const ciphertext = await getEntitySecretCiphertext()
 
   // Encode deposit(bytes32 claimKey, uint256 amount)
   // selector: keccak256("deposit(bytes32,uint256)") = 0x47e7ef24
@@ -123,7 +126,7 @@ export default async function handler(req, res) {
     if (!recipient?.wallet_address) {
       // NEW RECIPIENT — lock funds in escrow contract
       const claimKey = '0x' + crypto.randomBytes(32).toString('hex')
-      const tx = await escrowDeposit(walletId, amount, claimKey, ciphertext)
+      const tx = await escrowDeposit(walletId, amount, claimKey)
       const circleTransactionId = tx?.id || tx?.transaction?.id
 
       const { data: saved } = await db.from('transactions').insert({

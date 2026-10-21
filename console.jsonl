@@ -334,3 +334,5 @@
 {"level":"error","message":"Sender: Failed to get initial state. Please report this bug. {\"type\":\"sender-wallet-providerResult\",\"method\":\"sender_getProviderState\",\"params\":[],\"notificationId\":1792481204094818,\"response\":{\"error\":\"No account exist\"}}","timestamp":1792481206728}
 {"level":"debug","message":"Provider initialization - wallet not connected","timestamp":1792481207523}
 {"level":"log","message":"[vite] server connection lost. Polling for restart...","timestamp":1792481354943}
+{"level":"debug","message":"[vite] connected.","timestamp":1792561447094}
+{"level":"log","message":"[vite] server connection lost. Polling for restart...","timestamp":1792561589253}
