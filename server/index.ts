@@ -739,7 +739,8 @@ app.post('/payments/claim', async (req, res) => {
 
     const recipientAddress = recipientUser!.wallet_address!
     const depositId = tx.deposit_id ?? 0
-    const signerKey = process.env.ESCROW_SIGNER_PRIVATE_KEY!.trim()
+    const rawKey = process.env.ESCROW_SIGNER_PRIVATE_KEY!.trim().replace(/^0x/, '')
+    const signerKey = `0x${rawKey}` as `0x${string}`
     const escrowAddress = (process.env.VITE_ESCROW_ADDRESS!) as `0x${string}`
     const chainId = 5042002
 
@@ -755,7 +756,7 @@ app.post('/payments/claim', async (req, res) => {
       rpcUrls: { default: { http: [rpcUrl] } },
     } as const
 
-    const account = privateKeyToAccount(signerKey as `0x${string}`)
+    const account = privateKeyToAccount(signerKey)
     const walletClient = createWalletClient({ account, chain: arcTestnet, transport: http() })
     const publicClient = createPublicClient({ chain: arcTestnet, transport: http() })
 
