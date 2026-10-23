@@ -250,12 +250,31 @@ async function pollCircleTx(txId: string, maxWait = 90000): Promise<string> {
   return 'TIMEOUT'
 }
 
+async function getNextDepositId(): Promise<number> {
+  try {
+    const rpcUrl = `${process.env.RPC_PROXY_BASE_URL}/api/rpc/arc-testnet?_rpc_token=${process.env.RPC_PROXY_TOKEN}`
+    const resp = await fetch(rpcUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        jsonrpc: '2.0', id: 1, method: 'eth_call',
+        params: [{ to: process.env.VITE_ESCROW_ADDRESS, data: '0x75df0f9c' }, 'latest'], // nextDepositId()
+      }),
+    })
+    const d = await resp.json() as { result?: string }
+    return d.result ? parseInt(d.result, 16) : 0
+  } catch { return 0 }
+}
+
 async function runEscrow(walletId: string, depositorAddress: string, claimKey: string, amount: string, txDbId: string) {
   const supabase = getSupabase()
   try {
     const ESCROW = process.env.VITE_ESCROW_ADDRESS!
     const amountWei = BigInt(Math.round(parseFloat(amount) * 1_000_000)).toString(16).padStart(64, '0')
     const spenderPadded = ESCROW.replace('0x', '').toLowerCase().padStart(64, '0')
+    // Read nextDepositId BEFORE deposit so we know the depositId
+    const depositId = await getNextDepositId()
+    console.log('[escrow] expected depositId:', depositId)
     // approve(address,uint256) = 0x095ea7b3
     const approveTx = await contractCall(walletId, USDC_CONTRACT, `0x095ea7b3${spenderPadded}${amountWei}`)
     const approveTxId = (approveTx as { id?: string })?.id
@@ -269,8 +288,8 @@ async function runEscrow(walletId: string, depositorAddress: string, claimKey: s
     const depositTxId = (depositTx as { id?: string })?.id
     console.log('[escrow] deposit tx:', depositTxId)
     await pollCircleTx(depositTxId!)
-    console.log('[escrow] deposit confirmed — ESCROW LOCKED')
-    await supabase.from('transactions').update({ status: 'ESCROW_LOCKED', circle_transaction_id: depositTxId }).eq('id', txDbId)
+    console.log('[escrow] deposit confirmed — ESCROW LOCKED, depositId:', depositId)
+    await supabase.from('transactions').update({ status: 'ESCROW_LOCKED', circle_transaction_id: depositTxId, deposit_id: depositId }).eq('id', txDbId)
   } catch (e) {
     console.error('[escrow runEscrow error]', e)
     await supabase.from('transactions').update({ status: 'ESCROW_FAILED' }).eq('id', txDbId)
@@ -689,6 +708,7 @@ app.post('/payments/claim', async (req, res) => {
 
     if (txErr || !tx) return res.status(404).json({ error: 'Claim not found.' })
     if (tx.status === 'COMPLETED') return res.status(400).json({ error: 'Already claimed.' })
+    if (tx.status !== 'ESCROW_LOCKED') return res.status(400).json({ error: 'Funds not yet locked in escrow. Please try again in a moment.' })
 
     // Provision wallet for recipient if needed
     let recipientUser = await getUserByEmail(recipientEmail)
@@ -704,89 +724,68 @@ app.post('/payments/claim', async (req, res) => {
 
     const recipientAddress = recipientUser!.wallet_address!
     const depositId = tx.deposit_id ?? 0
-
-    // Build ECDSA signature for releaseTo
     const signerKey = process.env.ESCROW_SIGNER_PRIVATE_KEY!
-    const escrowAddress = process.env.VITE_ESCROW_ADDRESS!
+    const escrowAddress = (process.env.VITE_ESCROW_ADDRESS!) as `0x${string}`
     const chainId = 5042002
 
-    // Sign: keccak256(abi.encodePacked(depositId, recipient, chainId, address(this)))
-    const packed = Buffer.concat([
-      Buffer.from(depositId.toString(16).padStart(64, '0'), 'hex'),
-      Buffer.from(recipientAddress.replace('0x', '').padStart(64, '0'), 'hex'),
-      Buffer.from(chainId.toString(16).padStart(64, '0'), 'hex'),
-      Buffer.from(escrowAddress.replace('0x', '').padStart(64, '0'), 'hex'),
-    ])
-    const msgHash = crypto.createHash('sha3-256').update(packed).digest()
-
-    // Use secp256k1 to sign
-    const { createSign } = await import('node:crypto')
-    void createSign // secp256k1 not available in Node crypto — use Circle to call releaseTo directly via owner wallet
-    // The signer wallet IS the owner — call releaseTo via Circle contract execution using owner walletId
-    // We need the owner walletId — use tx.sender_wallet_id as fallback, or look up from env
-    // For now, build calldata manually: releaseTo(uint256,address,bytes)
-    // selector: 0xdce78358 (first 4 bytes of keccak256("releaseTo(uint256,address,bytes)"))
-    const selector = 'dce78358'
-    const depIdHex = depositId.toString(16).padStart(64, '0')
-    const recipHex = recipientAddress.replace('0x', '').padStart(64, '0')
-    // bytes offset = 96 (0x60), bytes length = 65 (0x41), signature padded to 96 bytes
-    // We need an actual signature — generate it with Node built-in secp256k1 via subtle crypto
-    const keyBytes = Buffer.from(signerKey.replace('0x', ''), 'hex')
-    const msgBytes = Buffer.from(
-      (() => {
-        // keccak256 of packed encoding
-        const buf = Buffer.concat([
-          Buffer.from(depositId.toString(16).padStart(64, '0'), 'hex'),
-          Buffer.from(recipientAddress.replace('0x', '').padStart(64, '0'), 'hex'),
-          Buffer.from(chainId.toString(16).padStart(64, '0'), 'hex'),
-          Buffer.from(escrowAddress.replace('0x', '').padStart(64, '0'), 'hex'),
-        ])
-        // use sha256 as keccak256 substitute — need real keccak256
-        // Import from a lightweight package — use the existing @noble/hashes if available
-        return buf
-      })()
-    )
-    void keyBytes; void msgBytes; void selector; void depIdHex; void recipHex; void msgHash; void packed
-    // Simplest approach: use Circle to call the contract from the SIGNER wallet directly
-    // The signer address must have an associated Circle walletId stored in env
-    const signerWalletId = process.env.ESCROW_SIGNER_WALLET_ID ?? tx.sender_wallet_id ?? ''
-    if (!signerWalletId) throw new Error('No signer wallet ID configured.')
-
-    // Build signature using secp256k1 — import noble/secp256k1 which is bundled with ethers
-    const { secp256k1 } = await import('@noble/curves/secp256k1')
+    // Use viem to sign and call releaseTo directly with the signer private key
+    const { createWalletClient, createPublicClient, http, encodeFunctionData, keccak256, encodePacked } = await import('viem')
+    const { privateKeyToAccount } = await import('viem/accounts')
     const { keccak_256 } = await import('@noble/hashes/sha3')
+    const { secp256k1 } = await import('@noble/curves/secp256k1')
 
-    const packBuf = Buffer.concat([
-      Buffer.from(depositId.toString(16).padStart(64, '0'), 'hex'),
-      Buffer.from(recipientAddress.replace('0x', '').padStart(64, '0'), 'hex'),
-      Buffer.from(chainId.toString(16).padStart(64, '0'), 'hex'),
-      Buffer.from(escrowAddress.replace('0x', '').padStart(64, '0'), 'hex'),
-    ])
-    const hash = keccak_256(packBuf)
-    // Ethereum prefix: "\x19Ethereum Signed Message:\n32"
-    const prefix = Buffer.from('\x19Ethereum Signed Message:\n32')
-    const prefixedHash = keccak_256(Buffer.concat([prefix, hash]))
+    const rpcUrl = `${process.env.RPC_PROXY_BASE_URL}/api/rpc/arc-testnet?_rpc_token=${process.env.RPC_PROXY_TOKEN}`
+    const arcTestnet = {
+      id: chainId,
+      name: 'Arc Testnet',
+      nativeCurrency: { name: 'USDC', symbol: 'USDC', decimals: 18 },
+      rpcUrls: { default: { http: [rpcUrl] } },
+    } as const
 
-    const privKey = Buffer.from(signerKey.replace('0x', ''), 'hex')
-    const sig = secp256k1.sign(prefixedHash, privKey)
-    const r = sig.r.toString(16).padStart(64, '0')
-    const s = sig.s.toString(16).padStart(64, '0')
-    const v = (sig.recovery! + 27).toString(16).padStart(2, '0')
-    const sigHex = r + s + v
+    const account = privateKeyToAccount(signerKey as `0x${string}`)
+    const walletClient = createWalletClient({ account, chain: arcTestnet, transport: http() })
+    const publicClient = createPublicClient({ chain: arcTestnet, transport: http() })
 
-    // Encode releaseTo(uint256,address,bytes) calldata
-    // selector(4) + depositId(32) + address(32) + bytes_offset(32) + bytes_length(32) + bytes_data(96 padded)
-    const bytesOffset = (96).toString(16).padStart(64, '0')
-    const bytesLength = (65).toString(16).padStart(64, '0')
-    const sigPadded = sigHex.padEnd(192, '0') // 96 bytes = 192 hex chars
-    const callData = '0x' + 'dce78358' + depIdHex + recipHex + bytesOffset + bytesLength + sigPadded
+    // keccak256(abi.encodePacked(depositId, recipient, chainId, address(this)))
+    const msgHash = keccak256(encodePacked(
+      ['uint256', 'address', 'uint256', 'address'],
+      [BigInt(depositId), recipientAddress as `0x${string}`, BigInt(chainId), escrowAddress]
+    ))
+    // Apply Ethereum signed message prefix then sign with secp256k1
+    const prefix = new TextEncoder().encode('\x19Ethereum Signed Message:\n32')
+    const msgBytes = Buffer.from(msgHash.replace('0x', ''), 'hex')
+    const prefixedHash = keccak_256(Buffer.concat([Buffer.from(prefix), msgBytes]))
+    const privKeyBytes = Buffer.from(signerKey.replace('0x', ''), 'hex')
+    const sig = secp256k1.sign(prefixedHash, privKeyBytes)
+    const signature = ('0x' + sig.r.toString(16).padStart(64, '0') + sig.s.toString(16).padStart(64, '0') + (sig.recovery! + 27).toString(16).padStart(2, '0')) as `0x${string}`
 
-    const releaseTxId = await contractCall(signerWalletId, escrowAddress, callData)
+    const releaseAbi = [{
+      name: 'releaseTo',
+      type: 'function',
+      inputs: [
+        { name: 'depositId', type: 'uint256' },
+        { name: 'recipient', type: 'address' },
+        { name: 'signature', type: 'bytes' },
+      ],
+      outputs: [],
+      stateMutability: 'nonpayable',
+    }] as const
+
+    const callData = encodeFunctionData({
+      abi: releaseAbi,
+      functionName: 'releaseTo',
+      args: [BigInt(depositId), recipientAddress as `0x${string}`, signature],
+    })
+
+    const txHash = await walletClient.sendTransaction({ to: escrowAddress, data: callData })
+    console.log('[claim] releaseTo tx hash:', txHash)
+    await publicClient.waitForTransactionReceipt({ hash: txHash })
+    console.log('[claim] releaseTo confirmed')
 
     // Update transaction status
     await supabase.from('transactions').update({ status: 'COMPLETED', recipient_wallet_address: recipientAddress }).eq('id', tx.id)
 
-    return res.json({ success: true, releaseTxId })
+    return res.json({ success: true, releaseTxId: txHash })
   } catch (err) {
     console.error('[/payments/claim] error:', err)
     return res.status(500).json({ error: 'Claim failed.' })
