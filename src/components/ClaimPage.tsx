@@ -30,7 +30,7 @@ export function ClaimPage({ claimKey }: { claimKey: string }) {
   }, [claimKey])
 
   useEffect(() => {
-    if (user && claimInfo && claimInfo.status === 'PENDING_CLAIM' && !claimed && !claiming) {
+    if (user && claimInfo && (claimInfo.status === 'PENDING_CLAIM' || claimInfo.status === 'ESCROW_LOCKED') && !claimed && !claiming) {
       void handleClaim()
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -86,7 +86,7 @@ export function ClaimPage({ claimKey }: { claimKey: string }) {
     </div>
   )
 
-  if (claimInfo?.status !== 'PENDING_CLAIM') return (
+  if (claimInfo?.status !== 'PENDING_CLAIM' && claimInfo?.status !== 'ESCROW_LOCKED') return (
     <div className="min-h-screen bg-[#050505] flex items-center justify-center p-6">
       <div className="text-center">
         <div className="text-4xl mb-4">✓</div>
