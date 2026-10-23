@@ -739,14 +739,14 @@ app.post('/payments/claim', async (req, res) => {
 
     const recipientAddress = recipientUser!.wallet_address!
     const depositId = tx.deposit_id ?? 0
+    // Use viem to sign and call releaseTo directly with the signer private key
+    const { createWalletClient, createPublicClient, http, encodeFunctionData, keccak256, encodePacked, hexToBytes } = await import('viem')
+
     const rawKey = process.env.ESCROW_SIGNER_PRIVATE_KEY!.trim().replace(/^0x/, '')
     console.log('[claim] key length:', rawKey.length, 'first4:', rawKey.slice(0,4))
     const signerKeyBytes = hexToBytes(`0x${rawKey}` as `0x${string}`)
     const escrowAddress = (process.env.VITE_ESCROW_ADDRESS!) as `0x${string}`
     const chainId = 5042002
-
-    // Use viem to sign and call releaseTo directly with the signer private key
-    const { createWalletClient, createPublicClient, http, encodeFunctionData, keccak256, encodePacked, hexToBytes } = await import('viem')
     const { privateKeyToAccount } = await import('viem/accounts')
 
     const rpcUrl = `${process.env.RPC_PROXY_BASE_URL}/api/rpc/Arc_Testnet?_rpc_token=${process.env.RPC_PROXY_TOKEN}`
