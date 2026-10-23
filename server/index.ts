@@ -194,8 +194,24 @@ const CIRCLE_API = 'https://api.circle.com/v1/w3s'
 const USDC_CONTRACT = '0x3600000000000000000000000000000000000000'
 
 async function getEntitySecretCiphertext(): Promise<string> {
-  const { generateEntitySecretCiphertext } = await import('@circle-fin/developer-controlled-wallets')
-  return generateEntitySecretCiphertext(process.env.CIRCLE_ENTITY_SECRET!)
+  // Fetch entity public key from Circle
+  const pkResp = await fetch(`${CIRCLE_API}/config/entity/publicKey`, {
+    headers: { Authorization: `Bearer ${process.env.CIRCLE_API_KEY}` },
+  })
+  if (!pkResp.ok) throw new Error(`Failed to get entity public key: ${pkResp.status}`)
+  const pkData = await pkResp.json() as { data?: { publicKey?: string } }
+  const publicKeyPem = pkData?.data?.publicKey
+  if (!publicKeyPem) throw new Error('No public key in response')
+
+  // Encrypt entity secret with RSA-OAEP using Node crypto
+  const { publicEncrypt, constants } = await import('node:crypto')
+  const entitySecretHex = process.env.CIRCLE_ENTITY_SECRET!
+  const entitySecretBytes = Buffer.from(entitySecretHex, 'hex')
+  const encrypted = publicEncrypt(
+    { key: publicKeyPem, padding: constants.RSA_PKCS1_OAEP_PADDING, oaepHash: 'sha256' },
+    entitySecretBytes,
+  )
+  return encrypted.toString('base64')
 }
 
 async function contractCall(walletId: string, contractAddress: string, callData: string) {
