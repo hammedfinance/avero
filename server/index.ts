@@ -258,7 +258,7 @@ async function getNextDepositId(): Promise<number> {
     console.log('[rpc] base:', base ? base.slice(0,30) : 'MISSING')
     console.log('[rpc] token length:', token ? token.length : 'MISSING')
     console.log('[rpc] escrow:', escrow)
-    const rpcUrl = `${base}/api/rpc/Arc_Testnet?_rpc_token=${token}`
+    const rpcUrl = process.env.ARC_RPC_URL || `${base}/api/rpc/Arc_Testnet?_rpc_token=${token}`
     const resp = await fetch(rpcUrl, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -749,7 +749,9 @@ app.post('/payments/claim', async (req, res) => {
     const chainId = 5042002
     const { privateKeyToAccount } = await import('viem/accounts')
 
-    const rpcUrl = `${process.env.RPC_PROXY_BASE_URL}/api/rpc/Arc_Testnet?_rpc_token=${process.env.RPC_PROXY_TOKEN}`
+    // ARC_RPC_URL must be set in Render env vars to the Arc Testnet public RPC
+    // (the RPC proxy token is session-scoped and only works inside Arc Studio)
+    const rpcUrl = process.env.ARC_RPC_URL || `${process.env.RPC_PROXY_BASE_URL}/api/rpc/Arc_Testnet?_rpc_token=${process.env.RPC_PROXY_TOKEN}`
     const arcTestnet = {
       id: chainId,
       name: 'Arc Testnet',
