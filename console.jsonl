@@ -420,3 +420,4 @@
 {"level":"log","message":"[vite] server connection lost. Polling for restart...","timestamp":1792774865485}
 {"level":"debug","message":"[vite] connected.","timestamp":1792774871944}
 {"level":"debug","message":"Provider initialization - wallet not connected","timestamp":1792774872222}
+{"level":"debug","message":"Provider initialization - wallet not connected","timestamp":1792775205464}

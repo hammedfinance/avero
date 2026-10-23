@@ -252,18 +252,30 @@ async function pollCircleTx(txId: string, maxWait = 90000): Promise<string> {
 
 async function getNextDepositId(): Promise<number> {
   try {
-    const rpcUrl = `${process.env.RPC_PROXY_BASE_URL}/api/rpc/Arc_Testnet?_rpc_token=${process.env.RPC_PROXY_TOKEN}`
+    const base = process.env.RPC_PROXY_BASE_URL
+    const token = process.env.RPC_PROXY_TOKEN
+    const escrow = process.env.VITE_ESCROW_ADDRESS
+    console.log('[rpc] base:', base ? base.slice(0,30) : 'MISSING')
+    console.log('[rpc] token length:', token ? token.length : 'MISSING')
+    console.log('[rpc] escrow:', escrow)
+    const rpcUrl = `${base}/api/rpc/Arc_Testnet?_rpc_token=${token}`
     const resp = await fetch(rpcUrl, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         jsonrpc: '2.0', id: 1, method: 'eth_call',
-        params: [{ to: process.env.VITE_ESCROW_ADDRESS, data: '0x8070a4bd' }, 'latest'], // nextDepositId()
+        params: [{ to: escrow, data: '0x8070a4bd' }, 'latest'],
       }),
     })
-    const d = await resp.json() as { result?: string }
+    const text = await resp.text()
+    console.log('[rpc] nextDepositId raw response:', text.slice(0, 200))
+    const d = JSON.parse(text) as { result?: string; error?: unknown }
+    if (d.error) console.log('[rpc] nextDepositId error:', d.error)
     return d.result ? parseInt(d.result, 16) : 0
-  } catch { return 0 }
+  } catch (e) {
+    console.log('[rpc] nextDepositId exception:', e)
+    return 0
+  }
 }
 
 async function runEscrow(walletId: string, depositorAddress: string, claimKey: string, amount: string, txDbId: string) {
