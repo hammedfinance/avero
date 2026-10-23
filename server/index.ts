@@ -260,6 +260,37 @@ async function runEscrow(walletId: string, depositorAddress: string, claimKey: s
   }
 }
 
+// ── Escrow test endpoint ──────────────────────────────────────
+app.post('/escrow/test', async (req, res) => {
+  const { walletId, walletAddress, amount } = req.body as { walletId?: string; walletAddress?: string; amount?: string }
+  if (!walletId || !walletAddress || !amount) return res.status(400).json({ error: 'walletId, walletAddress, amount required' })
+  const claimKey = '0x' + Array.from(crypto.getRandomValues(new Uint8Array(32))).map(b => b.toString(16).padStart(2, '0')).join('')
+  try {
+    const ESCROW = process.env.VITE_ESCROW_ADDRESS!
+    const amountWei = BigInt(Math.round(parseFloat(amount) * 1_000_000)).toString(16).padStart(64, '0')
+    const spenderPadded = ESCROW.replace('0x', '').toLowerCase().padStart(64, '0')
+    console.log('[escrow/test] starting approve...')
+    const approveTx = await contractCall(walletId, USDC_CONTRACT, `0x095ea7b3${spenderPadded}${amountWei}`)
+    const approveTxId = (approveTx as { id?: string })?.id
+    console.log('[escrow/test] approve tx:', approveTxId)
+    const approveStatus = await pollCircleTx(approveTxId!)
+    console.log('[escrow/test] approve status:', approveStatus)
+    const depositorPadded = walletAddress.replace('0x', '').toLowerCase().padStart(64, '0')
+    const keyHex = claimKey.replace('0x', '').padStart(64, '0')
+    console.log('[escrow/test] starting depositFor...')
+    const depositTx = await contractCall(walletId, ESCROW, `0xcd5bff7e${depositorPadded}${keyHex}${amountWei}`)
+    const depositTxId = (depositTx as { id?: string })?.id
+    console.log('[escrow/test] deposit tx:', depositTxId)
+    const depositStatus = await pollCircleTx(depositTxId!)
+    console.log('[escrow/test] deposit status:', depositStatus)
+    return res.json({ success: true, approveTxId, depositTxId, depositStatus, claimKey })
+  } catch (e: unknown) {
+    const msg = e instanceof Error ? e.message : String(e)
+    console.error('[escrow/test error]', msg)
+    return res.status(500).json({ error: msg })
+  }
+})
+
 app.post('/wallet/send', async (req, res) => {
   const body = req.body as {
     senderEmail?: string
