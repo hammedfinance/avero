@@ -252,7 +252,7 @@ async function pollCircleTx(txId: string, maxWait = 90000): Promise<string> {
 
 async function getNextDepositId(): Promise<number> {
   try {
-    const rpcUrl = `${process.env.RPC_PROXY_BASE_URL}/api/rpc/arc-testnet?_rpc_token=${process.env.RPC_PROXY_TOKEN}`
+    const rpcUrl = `${process.env.RPC_PROXY_BASE_URL}/api/rpc/Arc_Testnet?_rpc_token=${process.env.RPC_PROXY_TOKEN}`
     const resp = await fetch(rpcUrl, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -737,7 +737,7 @@ app.post('/payments/claim', async (req, res) => {
     const { keccak_256 } = await import('@noble/hashes/sha3')
     const { secp256k1 } = await import('@noble/curves/secp256k1')
 
-    const rpcUrl = `${process.env.RPC_PROXY_BASE_URL}/api/rpc/arc-testnet?_rpc_token=${process.env.RPC_PROXY_TOKEN}`
+    const rpcUrl = `${process.env.RPC_PROXY_BASE_URL}/api/rpc/Arc_Testnet?_rpc_token=${process.env.RPC_PROXY_TOKEN}`
     const arcTestnet = {
       id: chainId,
       name: 'Arc Testnet',
