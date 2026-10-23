@@ -739,7 +739,7 @@ app.post('/payments/claim', async (req, res) => {
 
     const recipientAddress = recipientUser!.wallet_address!
     const depositId = tx.deposit_id ?? 0
-    const signerKey = process.env.ESCROW_SIGNER_PRIVATE_KEY!
+    const signerKey = process.env.ESCROW_SIGNER_PRIVATE_KEY!.trim()
     const escrowAddress = (process.env.VITE_ESCROW_ADDRESS!) as `0x${string}`
     const chainId = 5042002
 
