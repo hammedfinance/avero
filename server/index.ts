@@ -728,12 +728,12 @@ app.post('/payments/claim', async (req, res) => {
     // Provision wallet for recipient if needed
     let recipientUser = await getUserByEmail(recipientEmail)
     if (!recipientUser?.wallet_address) {
-      const wallet = await createUserWallet()
+      const wallet = await createUserWallet(recipientEmail)
       if (recipientUser) {
-        await updateUserWallet(recipientUser.id, wallet.walletId, wallet.walletAddress)
+        await updateUserWallet(recipientUser.id, wallet.walletId, wallet.address)
         recipientUser = await getUserByEmail(recipientEmail)
       } else {
-        recipientUser = await upsertUser({ email: recipientEmail, walletId: wallet.walletId, walletAddress: wallet.walletAddress })
+        recipientUser = await upsertUser({ email: recipientEmail, walletId: wallet.walletId, walletAddress: wallet.address })
       }
     }
 
@@ -746,8 +746,6 @@ app.post('/payments/claim', async (req, res) => {
     // Use viem to sign and call releaseTo directly with the signer private key
     const { createWalletClient, createPublicClient, http, encodeFunctionData, keccak256, encodePacked } = await import('viem')
     const { privateKeyToAccount } = await import('viem/accounts')
-    const { keccak_256 } = await import('@noble/hashes/sha3')
-    const { secp256k1 } = await import('@noble/curves/secp256k1')
 
     const rpcUrl = `${process.env.RPC_PROXY_BASE_URL}/api/rpc/Arc_Testnet?_rpc_token=${process.env.RPC_PROXY_TOKEN}`
     const arcTestnet = {
@@ -766,13 +764,8 @@ app.post('/payments/claim', async (req, res) => {
       ['uint256', 'address', 'uint256', 'address'],
       [BigInt(depositId), recipientAddress as `0x${string}`, BigInt(chainId), escrowAddress]
     ))
-    // Apply Ethereum signed message prefix then sign with secp256k1
-    const prefix = new TextEncoder().encode('\x19Ethereum Signed Message:\n32')
-    const msgBytes = Buffer.from(msgHash.replace('0x', ''), 'hex')
-    const prefixedHash = keccak_256(Buffer.concat([Buffer.from(prefix), msgBytes]))
-    const privKeyBytes = Buffer.from(signerKey.replace('0x', ''), 'hex')
-    const sig = secp256k1.sign(prefixedHash, privKeyBytes)
-    const signature = ('0x' + sig.r.toString(16).padStart(64, '0') + sig.s.toString(16).padStart(64, '0') + (sig.recovery! + 27).toString(16).padStart(2, '0')) as `0x${string}`
+    // Sign using viem's built-in signMessage (handles Ethereum prefix automatically)
+    const signature = await account.signMessage({ message: { raw: msgHash as `0x${string}` } })
 
     const releaseAbi = [{
       name: 'releaseTo',
