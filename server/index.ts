@@ -26,6 +26,7 @@ import {
   sendPaymentNotification,
   sendPaymentReceipt,
   sendRequestNotification,
+  sendEscrowClaimEmail,
 } from './email'
 
 const app = express()
@@ -357,13 +358,13 @@ app.post('/wallet/send', async (req, res) => {
 
       // Send claim email
       if (isEmailConfigured()) {
-        sendPaymentNotification({
+        const appUrl = process.env.VITE_APP_URL ?? 'https://useavero.xyz'
+        sendEscrowClaimEmail({
           recipientEmail,
           senderEmail,
           amount: amountStr,
           message: note ?? undefined,
-          txId: saved?.id || '',
-          explorerUrl: `https://useavero.xyz/pay/claim?key=${encodeURIComponent(claimKey)}`,
+          claimUrl: `${appUrl}/pay/claim?key=${encodeURIComponent(claimKey)}`,
         }).catch((e: unknown) => console.error('[escrow email]', e))
       }
 
@@ -477,7 +478,7 @@ app.post('/payments/create', async (req, res) => {
       if (user) resolvedUserId = user.id
     }
     const link = await createPaymentLink({ userId: resolvedUserId, title, amount })
-    const baseUrl = process.env.VITE_APP_URL ?? 'https://avero.app'
+    const baseUrl = process.env.VITE_APP_URL ?? 'https://useavero.xyz'
     return res.json({
       id: link.id,
       slug: link.slug,
@@ -630,6 +631,165 @@ app.get('/requests/list', async (req, res) => {
   } catch (err) {
     console.error('[/requests/list] error:', err)
     return res.status(500).json({ error: 'Failed to list requests.' })
+  }
+})
+
+// ── Claim: get info ───────────────────────────────────────────
+
+app.get('/payments/claim-info', async (req, res) => {
+  const { key } = req.query as { key?: string }
+  if (!key) return res.status(400).json({ error: 'key is required.' })
+
+  if (!isSupabaseConfigured()) {
+    return missingEnv(res, 'Supabase', ['VITE_SUPABASE_URL', 'VITE_SUPABASE_ANON_KEY'])
+  }
+
+  try {
+    const supabase = getSupabase()
+    const { data, error } = await supabase
+      .from('transactions')
+      .select('*')
+      .eq('claim_key', key)
+      .single()
+
+    if (error || !data) return res.status(404).json({ error: 'Claim not found.' })
+
+    return res.json({
+      senderEmail: data.sender_email,
+      amount: data.amount,
+      note: data.message ?? undefined,
+      depositId: data.deposit_id ?? undefined,
+      status: data.status,
+    })
+  } catch (err) {
+    console.error('[/payments/claim-info] error:', err)
+    return res.status(500).json({ error: 'Failed to fetch claim info.' })
+  }
+})
+
+// ── Claim: release escrow ─────────────────────────────────────
+
+app.post('/payments/claim', async (req, res) => {
+  const { claimKey, recipientEmail } = req.body as { claimKey?: string; recipientEmail?: string }
+  if (!claimKey || !recipientEmail) {
+    return res.status(400).json({ error: 'claimKey and recipientEmail are required.' })
+  }
+
+  if (!isSupabaseConfigured()) {
+    return missingEnv(res, 'Supabase', ['VITE_SUPABASE_URL', 'VITE_SUPABASE_ANON_KEY'])
+  }
+
+  try {
+    const supabase = getSupabase()
+    const { data: tx, error: txErr } = await supabase
+      .from('transactions')
+      .select('*')
+      .eq('claim_key', claimKey)
+      .single()
+
+    if (txErr || !tx) return res.status(404).json({ error: 'Claim not found.' })
+    if (tx.status === 'COMPLETED') return res.status(400).json({ error: 'Already claimed.' })
+
+    // Provision wallet for recipient if needed
+    let recipientUser = await getUserByEmail(recipientEmail)
+    if (!recipientUser?.wallet_address) {
+      const wallet = await createUserWallet()
+      if (recipientUser) {
+        await updateUserWallet(recipientUser.id, wallet.walletId, wallet.walletAddress)
+        recipientUser = await getUserByEmail(recipientEmail)
+      } else {
+        recipientUser = await upsertUser({ email: recipientEmail, walletId: wallet.walletId, walletAddress: wallet.walletAddress })
+      }
+    }
+
+    const recipientAddress = recipientUser!.wallet_address!
+    const depositId = tx.deposit_id ?? 0
+
+    // Build ECDSA signature for releaseTo
+    const signerKey = process.env.ESCROW_SIGNER_PRIVATE_KEY!
+    const escrowAddress = process.env.VITE_ESCROW_ADDRESS!
+    const chainId = 5042002
+
+    // Sign: keccak256(abi.encodePacked(depositId, recipient, chainId, address(this)))
+    const packed = Buffer.concat([
+      Buffer.from(depositId.toString(16).padStart(64, '0'), 'hex'),
+      Buffer.from(recipientAddress.replace('0x', '').padStart(64, '0'), 'hex'),
+      Buffer.from(chainId.toString(16).padStart(64, '0'), 'hex'),
+      Buffer.from(escrowAddress.replace('0x', '').padStart(64, '0'), 'hex'),
+    ])
+    const msgHash = crypto.createHash('sha3-256').update(packed).digest()
+
+    // Use secp256k1 to sign
+    const { createSign } = await import('node:crypto')
+    void createSign // secp256k1 not available in Node crypto — use Circle to call releaseTo directly via owner wallet
+    // The signer wallet IS the owner — call releaseTo via Circle contract execution using owner walletId
+    // We need the owner walletId — use tx.sender_wallet_id as fallback, or look up from env
+    // For now, build calldata manually: releaseTo(uint256,address,bytes)
+    // selector: 0xdce78358 (first 4 bytes of keccak256("releaseTo(uint256,address,bytes)"))
+    const selector = 'dce78358'
+    const depIdHex = depositId.toString(16).padStart(64, '0')
+    const recipHex = recipientAddress.replace('0x', '').padStart(64, '0')
+    // bytes offset = 96 (0x60), bytes length = 65 (0x41), signature padded to 96 bytes
+    // We need an actual signature — generate it with Node built-in secp256k1 via subtle crypto
+    const keyBytes = Buffer.from(signerKey.replace('0x', ''), 'hex')
+    const msgBytes = Buffer.from(
+      (() => {
+        // keccak256 of packed encoding
+        const buf = Buffer.concat([
+          Buffer.from(depositId.toString(16).padStart(64, '0'), 'hex'),
+          Buffer.from(recipientAddress.replace('0x', '').padStart(64, '0'), 'hex'),
+          Buffer.from(chainId.toString(16).padStart(64, '0'), 'hex'),
+          Buffer.from(escrowAddress.replace('0x', '').padStart(64, '0'), 'hex'),
+        ])
+        // use sha256 as keccak256 substitute — need real keccak256
+        // Import from a lightweight package — use the existing @noble/hashes if available
+        return buf
+      })()
+    )
+    void keyBytes; void msgBytes; void selector; void depIdHex; void recipHex; void msgHash; void packed
+    // Simplest approach: use Circle to call the contract from the SIGNER wallet directly
+    // The signer address must have an associated Circle walletId stored in env
+    const signerWalletId = process.env.ESCROW_SIGNER_WALLET_ID ?? tx.sender_wallet_id ?? ''
+    if (!signerWalletId) throw new Error('No signer wallet ID configured.')
+
+    // Build signature using secp256k1 — import noble/secp256k1 which is bundled with ethers
+    const { secp256k1 } = await import('@noble/curves/secp256k1')
+    const { keccak_256 } = await import('@noble/hashes/sha3')
+
+    const packBuf = Buffer.concat([
+      Buffer.from(depositId.toString(16).padStart(64, '0'), 'hex'),
+      Buffer.from(recipientAddress.replace('0x', '').padStart(64, '0'), 'hex'),
+      Buffer.from(chainId.toString(16).padStart(64, '0'), 'hex'),
+      Buffer.from(escrowAddress.replace('0x', '').padStart(64, '0'), 'hex'),
+    ])
+    const hash = keccak_256(packBuf)
+    // Ethereum prefix: "\x19Ethereum Signed Message:\n32"
+    const prefix = Buffer.from('\x19Ethereum Signed Message:\n32')
+    const prefixedHash = keccak_256(Buffer.concat([prefix, hash]))
+
+    const privKey = Buffer.from(signerKey.replace('0x', ''), 'hex')
+    const sig = secp256k1.sign(prefixedHash, privKey)
+    const r = sig.r.toString(16).padStart(64, '0')
+    const s = sig.s.toString(16).padStart(64, '0')
+    const v = (sig.recovery! + 27).toString(16).padStart(2, '0')
+    const sigHex = r + s + v
+
+    // Encode releaseTo(uint256,address,bytes) calldata
+    // selector(4) + depositId(32) + address(32) + bytes_offset(32) + bytes_length(32) + bytes_data(96 padded)
+    const bytesOffset = (96).toString(16).padStart(64, '0')
+    const bytesLength = (65).toString(16).padStart(64, '0')
+    const sigPadded = sigHex.padEnd(192, '0') // 96 bytes = 192 hex chars
+    const callData = '0x' + 'dce78358' + depIdHex + recipHex + bytesOffset + bytesLength + sigPadded
+
+    const releaseTxId = await contractCall(signerWalletId, escrowAddress, callData)
+
+    // Update transaction status
+    await supabase.from('transactions').update({ status: 'COMPLETED', recipient_wallet_address: recipientAddress }).eq('id', tx.id)
+
+    return res.json({ success: true, releaseTxId })
+  } catch (err) {
+    console.error('[/payments/claim] error:', err)
+    return res.status(500).json({ error: 'Claim failed.' })
   }
 })
 

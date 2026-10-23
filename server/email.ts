@@ -42,7 +42,7 @@ export async function sendPaymentNotification(params: {
   const resend = getResend()
   const from = fromAddress()
   const displayAmount = parseFloat(params.amount).toFixed(2)
-  const appUrl = 'https://avero.app'
+  const appUrl = process.env.VITE_APP_URL ?? 'https://useavero.xyz'
 
   try {
   await resend.emails.send({
@@ -214,6 +214,69 @@ function buildPlainTextEmail(p: {
 
 function escHtml(str: string): string {
   return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
+}
+
+// ── Send escrow "claim your USDC" email to new recipient ──────
+
+export async function sendEscrowClaimEmail(params: {
+  recipientEmail: string
+  senderEmail: string
+  amount: string
+  message?: string
+  claimUrl: string
+}): Promise<void> {
+  const resend = getResend()
+  const from = fromAddress()
+  const displayAmount = parseFloat(params.amount).toFixed(2)
+
+  try {
+    await resend.emails.send({
+      from,
+      to: params.recipientEmail,
+      subject: `You have $${displayAmount} USDC waiting — claim it on Avero`,
+      html: `<!DOCTYPE html>
+<html lang="en">
+<head><meta charset="UTF-8" /><title>Claim your USDC</title></head>
+<body style="margin:0;padding:0;background:#050505;font-family:'DM Sans',Helvetica,Arial,sans-serif;color:#ffffff;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#050505;padding:40px 0;">
+    <tr><td align="center">
+      <table width="520" cellpadding="0" cellspacing="0" style="background:#111111;border:1px solid #242424;border-radius:16px;overflow:hidden;max-width:520px;width:100%;">
+        <tr><td style="padding:32px 36px 24px;border-bottom:1px solid #1A1A1A;">
+          <span style="font-size:18px;font-weight:800;letter-spacing:-0.04em;color:#ffffff;">Avero</span>
+        </td></tr>
+        <tr><td style="padding:36px 36px 28px;text-align:center;border-bottom:1px solid #1A1A1A;">
+          <p style="margin:0 0 6px;font-size:12px;font-weight:600;letter-spacing:0.12em;text-transform:uppercase;color:#A3A3A3;">You received</p>
+          <p style="margin:0;font-size:56px;font-weight:800;letter-spacing:-0.04em;color:#ffffff;line-height:1;">$${displayAmount}</p>
+          <p style="margin:4px 0 0;font-size:16px;color:#A3A3A3;font-weight:500;">USDC</p>
+        </td></tr>
+        <tr><td style="padding:24px 36px;">
+          <table width="100%" cellpadding="0" cellspacing="0">
+            <tr><td style="padding:10px 0;border-bottom:1px solid #1A1A1A;"><span style="font-size:12px;color:#A3A3A3;">From</span></td>
+              <td style="padding:10px 0;border-bottom:1px solid #1A1A1A;text-align:right;"><span style="font-size:12px;font-weight:600;color:#D4D4D4;">${escHtml(params.senderEmail)}</span></td></tr>
+            <tr><td style="padding:10px 0;border-bottom:1px solid #1A1A1A;"><span style="font-size:12px;color:#A3A3A3;">Network</span></td>
+              <td style="padding:10px 0;border-bottom:1px solid #1A1A1A;text-align:right;"><span style="font-size:12px;font-weight:600;color:#D4D4D4;">Arc Testnet</span></td></tr>
+            ${params.message ? `<tr><td style="padding:10px 0;border-bottom:1px solid #1A1A1A;"><span style="font-size:12px;color:#A3A3A3;">Note</span></td>
+              <td style="padding:10px 0;border-bottom:1px solid #1A1A1A;text-align:right;"><span style="font-size:12px;font-weight:600;color:#D4D4D4;">${escHtml(params.message)}</span></td></tr>` : ''}
+          </table>
+        </td></tr>
+        <tr><td style="padding:28px 36px 36px;text-align:center;">
+          <a href="${params.claimUrl}" style="display:inline-block;background:#ffffff;color:#050505;font-size:15px;font-weight:700;text-decoration:none;padding:16px 36px;border-radius:10px;">Claim your USDC →</a>
+          <p style="margin:20px 0 0;font-size:11px;color:#A3A3A3;">This link expires in 7 days. Avero — Move money intelligently.</p>
+        </td></tr>
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>`,
+      text: `You have $${displayAmount} USDC waiting on Avero!\n\n${params.senderEmail} sent you money.\n${params.message ? `Note: ${params.message}\n` : ''}\nClaim your USDC: ${params.claimUrl}\n\nThis link expires in 7 days.\nAvero — Move money intelligently.`,
+    })
+  } catch (err) {
+    if (isResend403(err)) {
+      console.warn('[email] Resend domain not verified — claim email skipped.')
+      return
+    }
+    throw err
+  }
 }
 
 // ── Send receipt to the SENDER after a successful payment ─────

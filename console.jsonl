@@ -392,3 +392,14 @@
 {"level":"log","message":"[vite] server connection lost. Polling for restart...","timestamp":1792736424847}
 {"level":"debug","message":"[vite] connected.","timestamp":1792736429852}
 {"level":"debug","message":"[vite] connected.","timestamp":1792736442737}
+{"level":"debug","message":"[vite] connected.","timestamp":1792736449566}
+{"level":"log","message":"[vite] server connection lost. Polling for restart...","timestamp":1792736453466}
+{"level":"log","message":"restart sse, about to listen","timestamp":1792737368937}
+{"level":"log","message":"listen https://wallet.binance.com/tonbridge/bridge/events?client_id=ce639ab5483fca62a6bebf2df5ff3e5854368a938d1a8cd810ed94b7117b485d&user_info=","timestamp":1792737368938}
+{"level":"log","message":"error {\"isTrusted\":true}","timestamp":1792737394011}
+{"level":"debug","message":"Provider initialization - wallet not connected","timestamp":1792738245879}
+{"level":"log","message":"[vite] server connection lost. Polling for restart...","timestamp":1792738421785}
+{"level":"log","message":"[vite] server connection lost. Polling for restart...","timestamp":1792738457259}
+{"level":"debug","message":"[vite] connected.","timestamp":1792738462743}
+{"level":"debug","message":"[vite] connected.","timestamp":1792738476827}
+{"level":"debug","message":"[vite] connected.","timestamp":1792738568815}
