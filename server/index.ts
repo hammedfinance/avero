@@ -258,7 +258,7 @@ async function getNextDepositId(): Promise<number> {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         jsonrpc: '2.0', id: 1, method: 'eth_call',
-        params: [{ to: process.env.VITE_ESCROW_ADDRESS, data: '0x75df0f9c' }, 'latest'], // nextDepositId()
+        params: [{ to: process.env.VITE_ESCROW_ADDRESS, data: '0x8070a4bd' }, 'latest'], // nextDepositId()
       }),
     })
     const d = await resp.json() as { result?: string }
@@ -273,8 +273,8 @@ async function runEscrow(walletId: string, depositorAddress: string, claimKey: s
     const amountWei = BigInt(Math.round(parseFloat(amount) * 1_000_000)).toString(16).padStart(64, '0')
     const spenderPadded = ESCROW.replace('0x', '').toLowerCase().padStart(64, '0')
     // Read nextDepositId BEFORE deposit so we know the depositId
-    const depositId = await getNextDepositId()
-    console.log('[escrow] expected depositId:', depositId)
+    const depositIdBefore = await getNextDepositId()
+    console.log('[escrow] nextDepositId before:', depositIdBefore)
     // approve(address,uint256) = 0x095ea7b3
     const approveTx = await contractCall(walletId, USDC_CONTRACT, `0x095ea7b3${spenderPadded}${amountWei}`)
     const approveTxId = (approveTx as { id?: string })?.id
@@ -288,7 +288,10 @@ async function runEscrow(walletId: string, depositorAddress: string, claimKey: s
     const depositTxId = (depositTx as { id?: string })?.id
     console.log('[escrow] deposit tx:', depositTxId)
     await pollCircleTx(depositTxId!)
-    console.log('[escrow] deposit confirmed — ESCROW LOCKED, depositId:', depositId)
+    // Read nextDepositId AFTER deposit — the actual depositId is (nextDepositId - 1)
+    const depositIdAfter = await getNextDepositId()
+    const depositId = depositIdAfter > 0 ? depositIdAfter - 1 : depositIdBefore
+    console.log('[escrow] deposit confirmed — ESCROW LOCKED, depositId:', depositId, '(nextDepositId now:', depositIdAfter, ')')
     await supabase.from('transactions').update({ status: 'ESCROW_LOCKED', circle_transaction_id: depositTxId, deposit_id: depositId }).eq('id', txDbId)
   } catch (e) {
     console.error('[escrow runEscrow error]', e)

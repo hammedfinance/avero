@@ -404,3 +404,8 @@
 {"level":"debug","message":"[vite] connected.","timestamp":1792738476827}
 {"level":"debug","message":"[vite] connected.","timestamp":1792738568815}
 {"level":"debug","message":"[vite] connected.","timestamp":1792739324574}
+{"level":"log","message":"[vite] server connection lost. Polling for restart...","timestamp":1792739420938}
+{"level":"debug","message":"[vite] connected.","timestamp":1792739426087}
+{"level":"debug","message":"Provider initialization - wallet not connected","timestamp":1792774032512}
+{"level":"log","message":"[vite] server connection lost. Polling for restart...","timestamp":1792774056971}
+{"level":"log","message":"[vite] server connection lost. Polling for restart...","timestamp":1792774115565}
