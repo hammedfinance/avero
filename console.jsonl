@@ -425,3 +425,5 @@
 {"level":"debug","message":"[vite] connected.","timestamp":1792776776052}
 {"level":"debug","message":"[vite] connected.","timestamp":1792777117465}
 {"level":"debug","message":"[vite] connected.","timestamp":1792777824597}
+{"level":"debug","message":"Provider initialization - wallet not connected","timestamp":1792778702363}
+{"level":"debug","message":"[vite] connected.","timestamp":1792778703023}
