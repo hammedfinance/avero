@@ -546,17 +546,20 @@ app.get('/payments/list', async (req, res) => {
 // ── Transactions: list ────────────────────────────────────────
 
 app.get('/transactions/list', async (req, res) => {
-  const { userId } = req.query as { userId?: string }
-  if (!userId) return res.status(400).json({ error: 'userId is required.' })
+  const { userId, email: emailParam } = req.query as { userId?: string; email?: string }
+  if (!userId && !emailParam) return res.status(400).json({ error: 'userId or email is required.' })
 
   if (!isSupabaseConfigured()) {
     return missingEnv(res, 'Supabase', ['VITE_SUPABASE_URL', 'VITE_SUPABASE_ANON_KEY'])
   }
 
   try {
-    // userId is the email in our query — check both
-    const user = await getUserById(userId).catch(() => null)
-    const email = user?.email ?? userId
+    // Prefer a directly-supplied email param (avoids Dynamic-ID vs Supabase-ID mismatch)
+    let email = emailParam ?? ''
+    if (!email && userId) {
+      const user = await getUserById(userId).catch(() => null)
+      email = user?.email ?? userId
+    }
     const transactions = await getTransactionsByEmail(email)
     return res.json({ transactions })
   } catch (err) {

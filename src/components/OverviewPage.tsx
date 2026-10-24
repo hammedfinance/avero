@@ -48,6 +48,7 @@ export function OverviewPage({ user, onNavigate }: OverviewPageProps) {
   const [balance, setBalance]         = useState<string | null>(null)
   const [balanceLoading, setBalanceLoading] = useState(false)
   const [recentTxns, setRecentTxns]   = useState<TxItem[]>([])
+  const [totalTxCount, setTotalTxCount] = useState<string>('—')
   const [sentTotal, setSentTotal]     = useState<string>('—')
   const [recvTotal, setRecvTotal]     = useState<string>('—')
   const [linkCount, setLinkCount]     = useState<string>('—')
@@ -92,8 +93,9 @@ export function OverviewPage({ user, onNavigate }: OverviewPageProps) {
           if (isSent && txDate >= startOfMonth) sentSum += amt
           if (!isSent) recvSum += amt
         })
-        setSentTotal(`$${sentSum.toFixed(2)}`)
-        setRecvTotal(`$${recvSum.toFixed(2)}`)
+        setSentTotal(sentSum > 0 ? `$${sentSum.toFixed(2)}` : '$0.00')
+        setRecvTotal(recvSum > 0 ? `$${recvSum.toFixed(2)}` : '$0.00')
+        setTotalTxCount(String(raw.length))
 
         const mapped: TxItem[] = raw.slice(0, 5).map((t) => ({
           id: t.id,
@@ -191,7 +193,7 @@ export function OverviewPage({ user, onNavigate }: OverviewPageProps) {
             { label: 'Sent this month',  value: sentTotal,  icon: ArrowUpRight,  color: 'text-[#f87171]' },
             { label: 'Received',         value: recvTotal,  icon: ArrowDownLeft, color: 'text-[#4ade80]' },
             { label: 'Payment links',    value: linkCount,  icon: Link2,         color: 'text-[#A3A3A3]' },
-            { label: 'Transactions',     value: String(recentTxns.length || '0'), icon: ArrowUpRight, color: 'text-[#A3A3A3]' },
+            { label: 'Transactions',     value: totalTxCount,  icon: ArrowUpRight, color: 'text-[#A3A3A3]' },
           ].map((stat) => (
             <Card key={stat.label} padding="sm" className="flex flex-col gap-2">
               <stat.icon size={14} className={stat.color} />
