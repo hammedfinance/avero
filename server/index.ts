@@ -768,14 +768,17 @@ app.post('/payments/claim', async (req, res) => {
     const walletClient = createWalletClient({ account, chain: arcTestnet, transport: http() })
     const publicClient = createPublicClient({ chain: arcTestnet, transport: http() })
 
-    // keccak256(abi.encodePacked(depositId, recipient, chainId, address(this)))
-    // The contract calls toEthSignedMessageHash internally, so we sign the raw hash here.
-    // Using account.sign({ hash }) skips the double-prefix that signMessage would add.
+    // Build the message hash exactly as the contract does:
+    //   keccak256(abi.encodePacked(depositId, recipient, chainId, address(this)))
+    // The contract then calls toEthSignedMessageHash(hash) before recovering,
+    // so we use signMessage({ message: { raw: hash } }) which applies the same
+    // Ethereum prefix — making ecrecover(toEthSignedMessageHash(hash), sig) == SIGNER.
     const msgHash = keccak256(encodePacked(
       ['uint256', 'address', 'uint256', 'address'],
       [BigInt(depositId), recipientAddress as `0x${string}`, BigInt(chainId), escrowAddress]
     ))
-    const signature = await account.sign({ hash: msgHash as `0x${string}` })
+    const { toBytes } = await import('viem')
+    const signature = await account.signMessage({ message: { raw: toBytes(msgHash) } })
 
     const releaseAbi = [{
       name: 'releaseTo',
