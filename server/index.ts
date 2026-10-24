@@ -734,10 +734,12 @@ app.post('/payments/claim', async (req, res) => {
       const wallet = await createUserWallet(recipientEmail)
       if (recipientUser) {
         await updateUserWallet(recipientUser.id, wallet.walletId, wallet.address)
-        recipientUser = await getUserByEmail(recipientEmail)
       } else {
-        recipientUser = await upsertUser({ email: recipientEmail, walletId: wallet.walletId, walletAddress: wallet.address })
+        // upsertUser returns void — insert then re-fetch
+        await upsertUser({ id: crypto.randomUUID(), email: recipientEmail, walletId: wallet.walletId, walletAddress: wallet.address })
       }
+      // Always re-fetch so recipientUser has wallet_address populated
+      recipientUser = await getUserByEmail(recipientEmail)
     }
 
     const recipientAddress = recipientUser!.wallet_address!
