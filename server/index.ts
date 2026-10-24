@@ -767,12 +767,13 @@ app.post('/payments/claim', async (req, res) => {
     const publicClient = createPublicClient({ chain: arcTestnet, transport: http() })
 
     // keccak256(abi.encodePacked(depositId, recipient, chainId, address(this)))
+    // The contract calls toEthSignedMessageHash internally, so we sign the raw hash here.
+    // Using account.sign({ hash }) skips the double-prefix that signMessage would add.
     const msgHash = keccak256(encodePacked(
       ['uint256', 'address', 'uint256', 'address'],
       [BigInt(depositId), recipientAddress as `0x${string}`, BigInt(chainId), escrowAddress]
     ))
-    // Sign using viem's built-in signMessage (handles Ethereum prefix automatically)
-    const signature = await account.signMessage({ message: { raw: msgHash as `0x${string}` } })
+    const signature = await account.sign({ hash: msgHash as `0x${string}` })
 
     const releaseAbi = [{
       name: 'releaseTo',
