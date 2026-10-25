@@ -1,33 +1,23 @@
 interface AverLogoProps {
-  size?: number
+  height?: number
   className?: string
 }
 
-export function AverLogo({ size = 28, className = '' }: AverLogoProps) {
+// Uses the logo image from /logo.png (in public/)
+// The logo is white text on white background — rendered on dark backgrounds only.
+export function AverLogo({ height = 28, className = '' }: AverLogoProps) {
   return (
-    <svg
-      width={size}
-      height={size}
-      viewBox="0 0 28 28"
-      fill="none"
-      xmlns="http://www.w3.org/2000/svg"
+    <img
+      src="/logo.png"
+      alt="Avero"
+      height={height}
+      style={{ height, width: 'auto' }}
       className={className}
-      aria-label="Avero"
-    >
-      {/* Clean geometric mark: stylized "A" chevron */}
-      <rect width="28" height="28" rx="7" fill="white" />
-      <path
-        d="M14 5L5 22H9.5L14 12.5L18.5 22H23L14 5Z"
-        fill="#050505"
-      />
-      <path
-        d="M11 17H17L15.5 14H12.5L11 17Z"
-        fill="white"
-      />
-    </svg>
+    />
   )
 }
 
+// Kept as fallback for places that only want the text wordmark
 export function AverWordmark({ className = '' }: { className?: string }) {
   return (
     <span

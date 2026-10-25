@@ -12,7 +12,7 @@ import {
   ChevronRight,
   Send,
 } from 'lucide-react'
-import { AverLogo, AverWordmark } from './ui/AverLogo'
+import { AverLogo } from './ui/AverLogo'
 import { clearSession, AverUser } from '../lib/auth'
 
 export type DashView = 'overview' | 'send' | 'request' | 'bulk' | 'links' | 'transactions' | 'wallet'
@@ -72,9 +72,8 @@ function SidebarContent({ user, activeView, onNavigate, onSignOut, onClose, mobi
       ${mobile ? 'w-full h-full p-5' : 'w-56 shrink-0 sticky top-0 h-screen p-4'}
     `}>
       <div className="flex items-center justify-between mb-8">
-        <div className="flex items-center gap-2.5">
-          <AverLogo size={24} />
-          <AverWordmark className="text-base text-white" />
+        <div className="flex items-center">
+          <AverLogo height={22} />
         </div>
         {mobile && onClose && (
           <button onClick={onClose} className="text-[#A3A3A3] hover:text-white">
@@ -160,9 +159,8 @@ export function DashboardLayout({ user, children, activeView, onNavigate, onSign
           <button onClick={() => setMobileOpen(true)} className="text-[#A3A3A3] hover:text-white p-1">
             <Menu size={20} />
           </button>
-          <div className="flex items-center gap-2">
-            <AverLogo size={22} />
-            <AverWordmark className="text-sm text-white" />
+          <div className="flex items-center">
+            <AverLogo height={20} />
           </div>
           <div className="w-8" />
         </header>

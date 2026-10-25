@@ -133,9 +133,8 @@ export function LandingPage({ onGetStarted }: LandingPageProps) {
       {/* ── Nav ── */}
       <header className={`fixed top-0 inset-x-0 z-50 transition-all duration-300 ${scrolled ? 'border-b border-[#1A1A1A] bg-[#050505]/90 backdrop-blur-xl' : ''}`}>
         <div className="max-w-6xl mx-auto px-5 h-14 flex items-center justify-between">
-          <div className="flex items-center gap-2.5">
-            <AverLogo size={26} />
-            <AverWordmark className="text-lg text-white" />
+          <div className="flex items-center">
+            <img src="/logo.png" alt="Avero" style={{ height: 24, width: 'auto' }} />
           </div>
 
           <nav className="hidden md:flex items-center gap-6">

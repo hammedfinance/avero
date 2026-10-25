@@ -100,8 +100,8 @@ export function ClaimPage({ claimKey }: { claimKey: string }) {
     <div className="min-h-screen bg-[#050505] flex items-center justify-center p-6">
       <div className="w-full max-w-sm">
         {/* Logo */}
-        <div className="text-center mb-8">
-          <span className="text-white font-bold text-2xl tracking-tight">avero</span>
+        <div className="flex justify-center mb-8">
+          <img src="/logo.png" alt="Avero" style={{ height: 28, width: 'auto' }} />
         </div>
 
         {/* Card */}
