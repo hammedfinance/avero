@@ -155,7 +155,7 @@ export function AuthPage({ onBack, onAuthenticated }: AuthPageProps) {
 
           {/* Legal */}
           <p className="text-[10px] text-[#A3A3A3] text-center mt-8 leading-relaxed">
-            This is a testnet application. No real funds. Built on Circle infrastructure.
+            This is a payments app. Real USDC on Arc. Built on Circle infrastructure.
           </p>
         </div>
       </div>

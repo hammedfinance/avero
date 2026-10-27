@@ -26,7 +26,7 @@ const QUICK_AMOUNTS = ['1', '5', '10', '25', '50']
 function statusLabel(s: string): string {
   if (s === 'INITIATED') return 'Accepted by Circle'
   if (s === 'PENDING')   return 'Submitted to network'
-  if (s === 'SENT')      return 'Broadcast to Arc Testnet'
+  if (s === 'SENT')      return 'Broadcast to Arc'
   if (s === 'CONFIRMED') return 'Confirmed on-chain'
   if (s === 'COMPLETE')  return 'Complete'
   if (s === 'FAILED')    return 'Transaction failed'
@@ -234,7 +234,7 @@ export function SendMoneyPage({ user }: SendMoneyPageProps) {
         >
           Send money
         </h1>
-        <p className="text-sm text-[#A3A3A3] mt-1">Send USDC to any email address on Arc Testnet.</p>
+        <p className="text-sm text-[#A3A3A3] mt-1">Send USDC to any email address on Arc.</p>
       </div>
 
       <AnimatePresence mode="wait">
@@ -324,14 +324,14 @@ export function SendMoneyPage({ user }: SendMoneyPageProps) {
                 >
                   {parseFloat(amount).toFixed(2)}
                 </p>
-                <p className="text-sm text-[#A3A3A3] mt-1">USDC on Arc Testnet</p>
+                <p className="text-sm text-[#A3A3A3] mt-1">USDC on Arc</p>
               </div>
 
               <div className="space-y-3">
                 {[
                   { label: 'From',    value: user.email },
                   { label: 'To',      value: recipientEmail },
-                  { label: 'Network', value: 'Arc Testnet' },
+                  { label: 'Network', value: 'Arc' },
                   { label: 'Asset',   value: 'USDC' },
                   ...(message ? [{ label: 'Note', value: message }] : []),
                 ].map((row) => (
@@ -370,7 +370,7 @@ export function SendMoneyPage({ user }: SendMoneyPageProps) {
                 <p className="text-sm font-bold text-white">Waiting for confirmation</p>
               </div>
               <p className="text-xs text-[#A3A3A3] mb-2">
-                Your transaction is on Arc Testnet. Polling for confirmation…
+                Your transaction is on Arc. Polling for confirmation…
               </p>
 
               <ConfirmationTracker stage={onchainStatus} />
@@ -490,7 +490,7 @@ export function SendMoneyPage({ user }: SendMoneyPageProps) {
                     rel="noopener noreferrer"
                     className="mt-4 inline-flex items-center gap-1.5 text-xs font-semibold text-[#A3A3A3] hover:text-white transition-colors"
                   >
-                    View on Arc Testnet explorer <ExternalLink size={12} />
+                    View on Arc explorer <ExternalLink size={12} />
                   </a>
                 )}
               </Card>

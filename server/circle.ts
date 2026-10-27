@@ -1,6 +1,6 @@
 /**
  * Avero — Circle developer-controlled wallets helper
- * Arc Testnet blockchain key in Circle's API: 'ARC-TESTNET'
+ * Arc mainnet blockchain key in Circle's API: 'ARC'
  */
 
 import {
@@ -43,7 +43,7 @@ export async function createUserWallet(userRef: string): Promise<{
   const walletSetId = getWalletSetId()
 
   const res = await sdk.createWallets({
-    blockchains: ['ARC-TESTNET'],
+    blockchains: ['ARC'],
     count: 1,
     walletSetId,
     metadata: [{ name: `avero-${userRef.slice(0, 24)}`, refId: userRef }],
@@ -79,11 +79,11 @@ export async function getWalletBalance(walletId: string): Promise<{
 }
 
 // ── Transfer USDC ────────────────────────────────────────────
-// On Arc Testnet, USDC is the native gas token.
+// On Arc, USDC is the native gas token.
 // Circle requires tokenId to identify the asset.
-// Native USDC token ID on ARC-TESTNET: 15dc2b5d-0994-58b0-bf8c-3a0501148ee8
+// USDC token ID on ARC (mainnet): 5677d668-490d-51d3-82c7-b2b8313df2f4
 
-const ARC_TESTNET_USDC_TOKEN_ID = '15dc2b5d-0994-58b0-bf8c-3a0501148ee8'
+const ARC_USDC_TOKEN_ID = '5677d668-490d-51d3-82c7-b2b8313df2f4'
 
 export async function sendUsdc(params: {
   senderWalletId: string
@@ -98,8 +98,8 @@ export async function sendUsdc(params: {
 
   const res = await sdk.createTransaction({
     walletId: params.senderWalletId,
-    blockchain: 'ARC-TESTNET',
-    tokenId: ARC_TESTNET_USDC_TOKEN_ID,
+    blockchain: 'ARC',
+    tokenId: ARC_USDC_TOKEN_ID,
     destinationAddress: params.recipientAddress,
     amounts: [params.amount],
     idempotencyKey: params.idempotencyKey,

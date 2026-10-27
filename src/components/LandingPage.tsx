@@ -31,7 +31,7 @@ const features = [
   {
     icon: Zap,
     title: 'Invisible payment rails',
-    body: 'Circle developer wallets and ARC-TESTNET settlement run quietly behind every transaction. Users see names and amounts.',
+    body: 'Circle developer wallets and Arc settlement run quietly behind every transaction. Users see names and amounts.',
   },
   {
     icon: Receipt,
@@ -47,7 +47,7 @@ const features = [
 
 const howItWorks = [
   { step: '01', title: 'Create your account', body: 'Sign up with your email. A Circle USDC wallet is provisioned for you automatically in the background.' },
-  { step: '02', title: 'Fund your wallet', body: 'Add USDC to your Avero wallet on Arc Testnet. No ETH needed — USDC is the native gas token.' },
+  { step: '02', title: 'Fund your wallet', body: 'Add USDC to your Avero wallet on Arc. No ETH needed — USDC is the native gas token.' },
   { step: '03', title: 'Send to any email', body: 'Type a recipient email and an amount. Avero resolves the wallet address and executes the transfer.' },
   { step: '04', title: 'Track everything', body: 'Every payment appears in your transaction history with status, timestamp, and a copy of the receipt.' },
 ]
@@ -71,7 +71,7 @@ function ProductPreview() {
           </div>
           <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full border border-[#1a8047]/30 bg-[#0f3d22] text-[10px] font-bold text-[#4ade80]">
             <span className="w-1.5 h-1.5 rounded-full bg-[#4ade80]" />
-            Arc Testnet
+            Arc
           </span>
         </div>
 
@@ -112,7 +112,7 @@ function ProductPreview() {
 
         {/* Rail info */}
         <p className="text-center text-[10px] text-[#A3A3A3] mt-3">
-          Powered by Circle + Arc Testnet
+          Powered by Circle + Arc
         </p>
       </motion.div>
     </div>
@@ -177,7 +177,7 @@ export function LandingPage({ onGetStarted }: LandingPageProps) {
                 <motion.div variants={fade} custom={0}>
                   <span className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-[#242424] bg-[#111111] text-xs font-semibold text-[#A3A3A3] mb-6">
                     <span className="w-1.5 h-1.5 rounded-full bg-[#4ade80]" />
-                    Arc Testnet · USDC
+                    Arc · USDC
                   </span>
                 </motion.div>
 
@@ -204,7 +204,7 @@ export function LandingPage({ onGetStarted }: LandingPageProps) {
                 </motion.div>
 
                 <motion.p variants={fade} custom={4} className="mt-5 text-xs text-[#A3A3A3]">
-                  Built on Circle USDC infrastructure · Arc Testnet · No crypto knowledge required
+                  Built on Circle USDC infrastructure · Arc · No crypto knowledge required
                 </motion.p>
               </motion.div>
             </div>
@@ -220,7 +220,7 @@ export function LandingPage({ onGetStarted }: LandingPageProps) {
           {[
             ['USDC', 'Native currency'],
             ['Email', 'Recipient handle'],
-            ['Arc Testnet', 'Settlement layer'],
+            ['Arc', 'Settlement layer'],
           ].map(([value, label]) => (
             <div key={label} className="px-4 first:pl-0 last:pr-0">
               <p className="text-xl font-bold text-white tabular-nums" style={{ fontFamily: 'Manrope, sans-serif' }}>{value}</p>
@@ -398,7 +398,7 @@ export function LandingPage({ onGetStarted }: LandingPageProps) {
               Avero's backend exposes clean REST endpoints backed by Circle developer-controlled wallets and Supabase. Connect your services to email-first USDC payments without building the plumbing yourself.
             </p>
             <div className="flex flex-wrap gap-2 mb-6">
-              {['Circle Wallets', 'Supabase', 'Arc Testnet', 'USDC', 'REST API'].map((tag) => (
+              {['Circle Wallets', 'Supabase', 'Arc', 'USDC', 'REST API'].map((tag) => (
                 <span key={tag} className="px-3 py-1 rounded-full border border-[#242424] text-xs font-semibold text-[#A3A3A3]">
                   {tag}
                 </span>
@@ -445,7 +445,7 @@ export function LandingPage({ onGetStarted }: LandingPageProps) {
             <AverWordmark className="text-sm text-[#A3A3A3]" />
           </div>
           <p className="text-xs text-[#A3A3A3]">
-            Built on Circle USDC + Arc Testnet. For development use only.
+            Built on Circle USDC + Arc mainnet. Move money intelligently.
           </p>
           <p className="text-xs text-[#A3A3A3]">
             &copy; 2026 Avero

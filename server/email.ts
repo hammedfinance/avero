@@ -146,7 +146,7 @@ function buildPaymentEmail(p: {
                     <span style="font-size:12px;color:#A3A3A3;">Network</span>
                   </td>
                   <td style="padding:10px 0;border-bottom:1px solid #1A1A1A;text-align:right;">
-                    <span style="font-size:12px;font-weight:600;color:#D4D4D4;">Arc Testnet</span>
+                    <span style="font-size:12px;font-weight:600;color:#D4D4D4;">Arc</span>
                   </td>
                 </tr>
                 ${p.message ? `
@@ -179,7 +179,6 @@ function buildPaymentEmail(p: {
                 Open Avero
               </a>
               <p style="margin:20px 0 0;font-size:11px;color:#A3A3A3;line-height:1.5;">
-                This is a testnet transaction. No real funds were moved.<br/>
                 Avero — Move money intelligently.
               </p>
             </td>
@@ -203,11 +202,10 @@ function buildPlainTextEmail(p: {
   return [
     'Avero — You received USDC',
     '',
-    `${p.senderEmail} sent you ${p.amount} USDC on Arc Testnet.`,
+    `${p.senderEmail} sent you ${p.amount} USDC on Arc.`,
     ...(p.message ? [`Note: ${p.message}`, ''] : ['']),
     `Sign in to Avero to view your balance: ${p.appUrl}/auth`,
     '',
-    'This is a testnet transaction. No real funds were moved.',
     'Avero — Move money intelligently.',
   ].join('\n')
 }
@@ -254,7 +252,7 @@ export async function sendEscrowClaimEmail(params: {
             <tr><td style="padding:10px 0;border-bottom:1px solid #1A1A1A;"><span style="font-size:12px;color:#A3A3A3;">From</span></td>
               <td style="padding:10px 0;border-bottom:1px solid #1A1A1A;text-align:right;"><span style="font-size:12px;font-weight:600;color:#D4D4D4;">${escHtml(params.senderEmail)}</span></td></tr>
             <tr><td style="padding:10px 0;border-bottom:1px solid #1A1A1A;"><span style="font-size:12px;color:#A3A3A3;">Network</span></td>
-              <td style="padding:10px 0;border-bottom:1px solid #1A1A1A;text-align:right;"><span style="font-size:12px;font-weight:600;color:#D4D4D4;">Arc Testnet</span></td></tr>
+              <td style="padding:10px 0;border-bottom:1px solid #1A1A1A;text-align:right;"><span style="font-size:12px;font-weight:600;color:#D4D4D4;">Arc</span></td></tr>
             ${params.message ? `<tr><td style="padding:10px 0;border-bottom:1px solid #1A1A1A;"><span style="font-size:12px;color:#A3A3A3;">Note</span></td>
               <td style="padding:10px 0;border-bottom:1px solid #1A1A1A;text-align:right;"><span style="font-size:12px;font-weight:600;color:#D4D4D4;">${escHtml(params.message)}</span></td></tr>` : ''}
           </table>
@@ -317,7 +315,7 @@ export async function sendPaymentReceipt(params: {
             <tr><td style="padding:10px 0;border-bottom:1px solid #1A1A1A;"><span style="font-size:12px;color:#A3A3A3;">To</span></td>
               <td style="padding:10px 0;border-bottom:1px solid #1A1A1A;text-align:right;"><span style="font-size:12px;font-weight:600;color:#D4D4D4;">${escHtml(params.recipientEmail)}</span></td></tr>
             <tr><td style="padding:10px 0;border-bottom:1px solid #1A1A1A;"><span style="font-size:12px;color:#A3A3A3;">Network</span></td>
-              <td style="padding:10px 0;border-bottom:1px solid #1A1A1A;text-align:right;"><span style="font-size:12px;font-weight:600;color:#D4D4D4;">Arc Testnet</span></td></tr>
+              <td style="padding:10px 0;border-bottom:1px solid #1A1A1A;text-align:right;"><span style="font-size:12px;font-weight:600;color:#D4D4D4;">Arc</span></td></tr>
             ${params.message ? `<tr><td style="padding:10px 0;border-bottom:1px solid #1A1A1A;"><span style="font-size:12px;color:#A3A3A3;">Note</span></td>
               <td style="padding:10px 0;border-bottom:1px solid #1A1A1A;text-align:right;"><span style="font-size:12px;font-weight:600;color:#D4D4D4;">${escHtml(params.message)}</span></td></tr>` : ''}
             <tr><td style="padding:10px 0;"><span style="font-size:12px;color:#A3A3A3;">Reference</span></td>

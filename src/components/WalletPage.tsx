@@ -117,7 +117,7 @@ export function WalletPage({ user }: WalletPageProps) {
         >
           Wallet
         </h1>
-        <p className="text-sm text-[#A3A3A3] mt-1">Your USDC wallet on Arc Testnet.</p>
+        <p className="text-sm text-[#A3A3A3] mt-1">Your USDC wallet on Arc.</p>
       </div>
 
       <div className="space-y-4">
@@ -137,7 +137,7 @@ export function WalletPage({ user }: WalletPageProps) {
         {isDemo && (
           <IntegrationBanner
             title="Sign in to see your wallet"
-            description="After signing in with Dynamic, a Circle USDC wallet on Arc Testnet is automatically provisioned for you."
+            description="After signing in with Dynamic, a Circle USDC wallet on Arc is automatically provisioned for you."
             envVars={['VITE_DYNAMIC_ENVIRONMENT_ID', 'CIRCLE_API_KEY', 'CIRCLE_ENTITY_SECRET', 'CIRCLE_WALLET_SET_ID']}
           />
         )}
@@ -153,7 +153,7 @@ export function WalletPage({ user }: WalletPageProps) {
                 <div>
                   <p className="text-base font-bold text-white mb-1">No wallet yet</p>
                   <p className="text-sm text-[#A3A3A3]">
-                    Your Circle USDC wallet on Arc Testnet hasn't been provisioned yet.
+                    Your Circle USDC wallet on Arc hasn't been provisioned yet.
                     Click below to create it now.
                   </p>
                 </div>
@@ -184,7 +184,7 @@ export function WalletPage({ user }: WalletPageProps) {
                   </div>
                   <div>
                     <p className="text-sm font-bold text-white">Avero wallet</p>
-                    <p className="text-xs text-[#A3A3A3]">Arc Testnet · USDC</p>
+                    <p className="text-xs text-[#A3A3A3]">Arc · USDC</p>
                   </div>
                   <div className="ml-auto">
                     <Button
@@ -242,7 +242,7 @@ export function WalletPage({ user }: WalletPageProps) {
                     )}
                   </div>
                   <p className="text-[10px] text-[#A3A3A3] mt-2">
-                    Send Arc Testnet USDC to this address to fund your Avero wallet.
+                    Send Arc USDC to this address to fund your Avero wallet.
                   </p>
                 </div>
 
@@ -259,21 +259,21 @@ export function WalletPage({ user }: WalletPageProps) {
                 <ArrowDownToLine size={14} className="text-[#A3A3A3]" />
               </div>
               <div className="flex-1 min-w-0">
-                <p className="text-sm font-bold text-white mb-1">Fund your wallet with testnet USDC</p>
+                <p className="text-sm font-bold text-white mb-1">Fund your wallet with USDC</p>
                 <p className="text-xs text-[#A3A3A3] mb-3">
-                  Two ways to get Arc Testnet USDC for testing:
+                  Two ways to get Arc USDC for testing:
                 </p>
                 <div className="space-y-2 mb-4">
                   <div className="rounded-lg bg-[#0A0A0A] border border-[#1A1A1A] px-3 py-2.5">
                     <p className="text-xs font-semibold text-white mb-0.5">Option 1 — Arc Studio sidebar</p>
                     <p className="text-xs text-[#A3A3A3]">
-                      Click <span className="text-white font-mono">"Get test USDC"</span> in the Arc Studio sidebar (left panel). Connect your wallet, get free testnet USDC instantly, then send it to the deposit address above.
+                      Click <span className="text-white font-mono">"Get test USDC"</span> in the Arc Studio sidebar (left panel). Connect your wallet, get free USDC instantly, then send it to the deposit address above.
                     </p>
                   </div>
                   <div className="rounded-lg bg-[#0A0A0A] border border-[#1A1A1A] px-3 py-2.5">
                     <p className="text-xs font-semibold text-white mb-0.5">Option 2 — Circle faucet</p>
                     <p className="text-xs text-[#A3A3A3] mb-2">
-                      Request directly from Circle's testnet faucet. Paste your deposit address above when prompted.
+                      Request directly from Circle's faucet. Paste your deposit address above when prompted.
                     </p>
                     <Button
                       variant="secondary"

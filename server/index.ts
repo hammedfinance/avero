@@ -258,7 +258,7 @@ async function getNextDepositId(): Promise<number> {
     console.log('[rpc] base:', base ? base.slice(0,30) : 'MISSING')
     console.log('[rpc] token length:', token ? token.length : 'MISSING')
     console.log('[rpc] escrow:', escrow)
-    const rpcUrl = process.env.ARC_RPC_URL || `${base}/api/rpc/Arc_Testnet?_rpc_token=${token}`
+    const rpcUrl = process.env.ARC_RPC_URL || `${base}/api/rpc/Arc?_rpc_token=${token}`
     const resp = await fetch(rpcUrl, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -472,7 +472,7 @@ app.get('/wallet/status/:circleTransactionId', async (req, res) => {
     const data = body.data?.transaction ?? {}
     const txHash = data.txHash ?? null
     const chainStatus = data.state ?? 'PENDING'
-    const ARC_TESTNET_EXPLORER = 'https://explorer.testnet.arc.io'
+    const ARC_TESTNET_EXPLORER = 'https://explorer.arc.io'
     const blockExplorerUrl = txHash ? `${ARC_TESTNET_EXPLORER}/tx/${txHash}` : null
 
     // Update Supabase record if confirmed and we have a hash
@@ -751,15 +751,14 @@ app.post('/payments/claim', async (req, res) => {
     console.log('[claim] key length:', rawKey.length, 'first4:', rawKey.slice(0,4))
     const signerKeyHex = `0x${rawKey}` as `0x${string}`
     const escrowAddress = (process.env.VITE_ESCROW_ADDRESS!) as `0x${string}`
-    const chainId = 5042002
+    const chainId = 5042 // Arc mainnet
     const { privateKeyToAccount } = await import('viem/accounts')
 
-    // ARC_RPC_URL must be set in Render env vars to the Arc Testnet public RPC
-    // (the RPC proxy token is session-scoped and only works inside Arc Studio)
-    const rpcUrl = process.env.ARC_RPC_URL || `${process.env.RPC_PROXY_BASE_URL}/api/rpc/Arc_Testnet?_rpc_token=${process.env.RPC_PROXY_TOKEN}`
+    // ARC_RPC_URL must be set in Render env vars to https://rpc.mainnet.arc.io
+    const rpcUrl = process.env.ARC_RPC_URL || `${process.env.RPC_PROXY_BASE_URL}/api/rpc/Arc?_rpc_token=${process.env.RPC_PROXY_TOKEN}`
     const arcTestnet = {
       id: chainId,
-      name: 'Arc Testnet',
+      name: 'Arc',
       nativeCurrency: { name: 'USDC', symbol: 'USDC', decimals: 18 },
       rpcUrls: { default: { http: [rpcUrl] } },
     } as const
