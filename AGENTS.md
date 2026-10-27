@@ -26,11 +26,18 @@ Send USDC to any email address. Recipients without a wallet get funds held in th
 
 | Contract | Network | Address | Explorer |
 |---|---|---|---|
+| AveiroEscrow | Arc Mainnet | `0x72B552FECb12Ce5d044dff24Ea23bEBCF2a16598` | https://explorer.arc.io/address/0x72B552FECb12Ce5d044dff24Ea23bEBCF2a16598 |
 | AveiroEscrow | Arc Testnet | `0x74e0a983ff13e1dc9885cd40da0a30fb0fad695f` | https://explorer.testnet.arc.io/address/0x74e0a983ff13e1dc9885cd40da0a30fb0fad695f |
 
-### AveiroEscrow
+### AveiroEscrow — Arc Mainnet
+- Deploy tx: `0x5e7735b8261fdc6ea709098d699246557fab870bb2edb50ed332e5607ff4b214`
+- Signer: `0x0Af88809984e0c4E30ac381B6D34e1a9f9A53161` (ESCROW_SIGNER_PRIVATE_KEY in Render)
+- Deployer: `0x0995905aDec2391De10227D407b34B1555eE384f`
+- USDC: `0x3600000000000000000000000000000000000000`
+
+### AveiroEscrow — Arc Testnet
 - Deploy tx: `0xb784afed7054db8ab6987dce8b62f02b8db0feb9823eb8883b066dfbf57fd884`
-- Signer: `0x6AEDA914Fb671d66f06a3AA9E2Bd3cE1C9e862d2` (ESCROW_SIGNER_PRIVATE_KEY in Render)
+- Signer: `0x6AEDA914Fb671d66f06a3AA9E2Bd3cE1C9e862d2` (testnet only)
 - Old contract (signer key lost): `0xf7162548acae78c6a81f2322cc796e2bbfa3beb0`
 - USDC: `0x3600000000000000000000000000000000000000`
 - Purpose: Holds USDC when sending to an email with no Avero wallet. Backend signs releaseTo() calls with ESCROW_SIGNER_PRIVATE_KEY. Sender can cancel() after 7 days.
